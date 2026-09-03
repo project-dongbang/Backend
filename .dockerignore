@@ -1,0 +1,9 @@
+.git
+.gradle
+.gradle-user-home
+.docker-local
+.env
+.env.*
+build
+*.log
+.idea

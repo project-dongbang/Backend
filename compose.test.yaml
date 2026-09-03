@@ -1,0 +1,19 @@
+# Test data is discarded when the container stops.
+name: dongbang-test
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: dongbang_test
+      POSTGRES_USER: dongbang_test
+      POSTGRES_PASSWORD: test_only_password
+    ports:
+      - "127.0.0.1:5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dongbang_test -d dongbang_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s

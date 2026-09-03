@@ -1,0 +1,6 @@
+# Never enable this profile in production.
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/dongbang}
+    username: ${DB_USERNAME:dongbang}
+    password: ${DB_PASSWORD:dongbang_local_only}
