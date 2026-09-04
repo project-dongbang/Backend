@@ -1,0 +1,51 @@
+name: Backend CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: dongbang_test
+          POSTGRES_USER: dongbang_test
+          POSTGRES_PASSWORD: ci_only_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U dongbang_test -d dongbang_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DB_URL: jdbc:postgresql://localhost:5432/dongbang_test
+      DB_USERNAME: dongbang_test
+      DB_PASSWORD: ci_only_password
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@0b6dd653ba04f4f93bf581ec31e66cbd7dcb644d # v4
+      - name: Unit tests, PostgreSQL integration tests and build
+        run: bash ./gradlew --no-daemon test integrationTest bootJar
+      - name: Validate local Compose configuration
+        run: POSTGRES_PASSWORD=ci_only_password docker compose config --quiet
+      - name: Verify container build
+        run: docker build --tag dongbang-api:ci .
