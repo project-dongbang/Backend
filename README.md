@@ -43,7 +43,7 @@ Spring Boot는 `.env`를 자동으로 읽지 않습니다.
 ```
 
 DB 없이 API·보안 테스트를 실행하고 `build/libs/dongbang.jar`를 생성합니다.
-DB 통합 테스트 실행법과 설정 설명은 [인프라 가이드](docs/INFRA_GUIDE.md)를 참고하세요.
+DB 통합 테스트는 CI에서 자동으로 실행합니다.
 
 ## CI
 
