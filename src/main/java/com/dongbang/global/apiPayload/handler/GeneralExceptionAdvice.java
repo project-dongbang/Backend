@@ -6,18 +6,20 @@ import com.dongbang.global.apiPayload.code.GeneralErrorCode;
 import com.dongbang.global.apiPayload.exception.GeneralException;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.BindException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-
-import org.springframework.validation.BindException;
+import org.springframework.validation.method.ParameterValidationResult;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.List;
 
@@ -72,14 +74,36 @@ public class GeneralExceptionAdvice {
                 .body(ApiResponse.onFailure(ec, detail));
     }
 
+    // Spring MVC 내장 메서드 검증 실패 (RequestParam / PathVariable 등)
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<ApiResponse<?>> handleHandlerMethodValidation(HandlerMethodValidationException ex) {
+        BaseErrorCode ec = GeneralErrorCode.VALIDATION_ERROR;
+
+        List<String> detail = ex.getParameterValidationResults().stream()
+                .flatMap(result -> result.getResolvableErrors().stream()
+                        .map(error -> parameterName(result) + ": " + error.getDefaultMessage()))
+                .toList();
+
+        return ResponseEntity.status(ec.getHttpStatus())
+                .body(ApiResponse.onFailure(ec, detail));
+    }
+
     //타입 미스매치
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ApiResponse<?>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
         BaseErrorCode ec = GeneralErrorCode.VALIDATION_ERROR;
 
-        String detail = ex.getName() + ": 타입이 올바르지 않습니다. (value=" + ex.getValue() + ")";
+        String detail = ex.getName() + ": 타입이 올바르지 않습니다.";
         return ResponseEntity.status(ec.getHttpStatus())
                 .body(ApiResponse.onFailure(ec, List.of(detail)));
+    }
+
+    // 존재하지 않는 API 경로
+    @ExceptionHandler({NoResourceFoundException.class, NoHandlerFoundException.class})
+    public ResponseEntity<ApiResponse<?>> handleNotFound(Exception ex) {
+        BaseErrorCode ec = GeneralErrorCode.NOT_FOUND;
+        return ResponseEntity.status(ec.getHttpStatus())
+                .body(ApiResponse.onFailure(ec, null));
     }
 
     //필수 RequestParam 누락
@@ -130,6 +154,11 @@ public class GeneralExceptionAdvice {
         BaseErrorCode ec = GeneralErrorCode.INTERNAL_SERVER_ERROR;
         return ResponseEntity.status(ec.getHttpStatus())
                 .body(ApiResponse.onFailure(ec, null));
+    }
+
+    private String parameterName(ParameterValidationResult result) {
+        String name = result.getMethodParameter().getParameterName();
+        return name != null ? name : "parameter";
     }
 
 }
