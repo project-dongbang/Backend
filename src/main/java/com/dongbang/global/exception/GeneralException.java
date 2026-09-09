@@ -1,6 +1,6 @@
-package com.dongbang.global.apiPayload.exception;
+package com.dongbang.global.exception;
 
-import com.dongbang.global.apiPayload.code.BaseErrorCode;
+import com.dongbang.global.response.code.BaseErrorCode;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 

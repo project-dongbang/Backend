@@ -1,6 +1,6 @@
-package com.dongbang.config;
+package com.dongbang.global.config;
 
-import com.dongbang.global.apiPayload.handler.ApiSecurityExceptionHandler;
+import com.dongbang.global.security.ApiSecurityExceptionHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;

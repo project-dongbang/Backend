@@ -1,4 +1,4 @@
-package com.dongbang.health;
+package com.dongbang.health.presentation;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;

@@ -1,4 +1,4 @@
-package com.dongbang.global.apiPayload.code;
+package com.dongbang.global.response.code;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

@@ -1,7 +1,7 @@
-package com.dongbang.health;
+package com.dongbang.health.presentation;
 
-import com.dongbang.config.SecurityConfig;
-import com.dongbang.global.apiPayload.handler.ApiSecurityExceptionHandler;
+import com.dongbang.global.config.SecurityConfig;
+import com.dongbang.global.security.ApiSecurityExceptionHandler;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;

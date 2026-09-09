@@ -1,9 +1,8 @@
-package com.dongbang.global.apiPayload.handler;
+package com.dongbang.global.exception;
 
-import com.dongbang.global.apiPayload.ApiResponse;
-import com.dongbang.global.apiPayload.code.BaseErrorCode;
-import com.dongbang.global.apiPayload.code.GeneralErrorCode;
-import com.dongbang.global.apiPayload.exception.GeneralException;
+import com.dongbang.global.response.ApiResponse;
+import com.dongbang.global.response.code.BaseErrorCode;
+import com.dongbang.global.response.code.GeneralErrorCode;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;

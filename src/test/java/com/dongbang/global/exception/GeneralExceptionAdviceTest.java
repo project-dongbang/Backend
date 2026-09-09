@@ -1,9 +1,8 @@
-package com.dongbang.global.apiPayload.handler;
+package com.dongbang.global.exception;
 
-import com.dongbang.global.apiPayload.ApiResponse;
-import com.dongbang.global.apiPayload.code.GeneralErrorCode;
-import com.dongbang.global.apiPayload.code.GeneralSuccessCode;
-import com.dongbang.global.apiPayload.exception.GeneralException;
+import com.dongbang.global.response.ApiResponse;
+import com.dongbang.global.response.code.GeneralErrorCode;
+import com.dongbang.global.response.code.GeneralSuccessCode;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;

@@ -1,8 +1,8 @@
-package com.dongbang.global.apiPayload.handler;
+package com.dongbang.global.security;
 
-import com.dongbang.global.apiPayload.ApiResponse;
-import com.dongbang.global.apiPayload.code.BaseErrorCode;
-import com.dongbang.global.apiPayload.code.GeneralErrorCode;
+import com.dongbang.global.response.ApiResponse;
+import com.dongbang.global.response.code.BaseErrorCode;
+import com.dongbang.global.response.code.GeneralErrorCode;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;

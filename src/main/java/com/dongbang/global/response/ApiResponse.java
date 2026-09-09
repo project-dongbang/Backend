@@ -1,10 +1,10 @@
-package com.dongbang.global.apiPayload;
+package com.dongbang.global.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.dongbang.global.apiPayload.code.BaseErrorCode;
-import com.dongbang.global.apiPayload.code.BaseSuccessCode;
+import com.dongbang.global.response.code.BaseErrorCode;
+import com.dongbang.global.response.code.BaseSuccessCode;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
