@@ -1,4 +1,4 @@
-package com.dongbang.config;
+package com.dongbang.global.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
