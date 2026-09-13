@@ -30,7 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest
+@WebMvcTest(controllers = GeneralExceptionAdviceTest.TestController.class)
 @Import({GeneralExceptionAdvice.class, GeneralExceptionAdviceTest.TestController.class})
 @WithMockUser
 class GeneralExceptionAdviceTest {
