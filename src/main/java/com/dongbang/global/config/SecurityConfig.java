@@ -21,6 +21,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.GET, "/api/health",
                                 "/actuator/health/liveness", "/actuator/health/readiness").permitAll()
+                        .requestMatchers("/api/v1/**").permitAll()
                         .anyRequest().denyAll())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .formLogin(AbstractHttpConfigurer::disable)
@@ -29,7 +30,7 @@ public class SecurityConfig {
                 .exceptionHandling(errors -> errors
                         .authenticationEntryPoint(apiSecurityExceptionHandler)
                         .accessDeniedHandler(apiSecurityExceptionHandler))
-                // Revisit CSRF after choosing the authentication strategy.
+                .csrf(csrf -> csrf.ignoringRequestMatchers("/api/v1/**"))
                 .build();
     }
 }
