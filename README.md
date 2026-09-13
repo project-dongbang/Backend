@@ -45,48 +45,72 @@ finance
 - `global`에는 특정 업무 기능의 규칙을 넣지 않습니다.
 - DB 스키마 변경은 `src/main/resources/db/migration`의 Flyway 마이그레이션으로 관리합니다.
 
-## 실행
+## 🚀 로컬 개발 환경 셋업
 
-Docker Desktop을 켜고 **Backend 디렉터리**에서 실행합니다. 아래는 PowerShell 기준입니다.
-
+### 1. 환경변수 준비
+최초 1회 `.env.example`을 복사하여 `.env` 파일을 생성합니다.
 ```powershell
-Copy-Item .env.example .env  # 최초 1회만, 기존 파일은 보존
-docker compose --profile app up --build -d --wait
-.\scripts\Test-Api.ps1
+Copy-Item .env.example .env   # macOS/Linux: cp .env.example .env
 ```
+> ⚠️ **주의**: `.env` 파일은 실제 민감한 비밀값이 포함될 수 있으므로 **절대 Git에 커밋하지 않습니다** (`.gitignore` 등록됨).
 
-- API: `http://localhost:8080/api/health`
-- DB: `localhost:5432` — 계정 설정은 `.env` 참고
-- 로그: `docker compose --profile app logs -f api`
-- 종료: `docker compose --profile app down`
-
-`.env`는 커밋하지 않습니다. `down -v`는 DB 데이터를 삭제하므로 주의하세요.
-현재 Compose 설정은 로컬 전용입니다.
-
-## IDE 개발
-
-JDK 21이 필요합니다. DB는 Docker로, API는 IDE 또는 Gradle로 실행합니다.
-
+### 2. 로컬 PostgreSQL 데이터베이스 실행
+Docker Desktop을 실행한 후 로컬 DB 컨테이너를 구동합니다:
 ```powershell
-docker compose --profile app stop api
-docker compose up -d --wait db
-.\gradlew.bat bootRun --args="--spring.profiles.active=local"
+docker compose up -d db
 ```
+* DB 포트: `localhost:5432`
+* DB 이름: `dongbang`
+* 접속 계정: `dongbang` / (비밀번호는 각자의 로컬 `.env` 참조)
 
-IDE에서는 활성 프로필을 `local`로 지정하세요.
-DB 설정을 바꿨다면 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`도 맞춰주세요.
-Spring Boot는 `.env`를 자동으로 읽지 않습니다.
+### 3. IDE(IntelliJ IDEA) 실행 설정
+* 기본 프로필이 `local`로 지정되어 있어, `docker compose up -d db` 실행 후 IntelliJ에서 `DongBangApplication`을 바로 **Run(▶)** 하시면 로컬 DB와 자동 연동되어 부팅됩니다.
+* 환경 변수를 직접 지정하고 싶다면 IntelliJ의 **[Edit Configurations] ➔ [Environment variables]**에 로컬 `.env`의 값을 입력합니다:
+  ```text
+  DB_URL=jdbc:postgresql://localhost:5432/dongbang;DB_USERNAME=dongbang;DB_PASSWORD=<로컬_비밀번호>;PORT=8080
+  ```
+  *(팁: IntelliJ 플러그인 `EnvFile`을 설치하면 `.env` 파일을 체크 한 번으로 자동 주입할 수 있습니다.)*
 
-## 테스트·빌드
+---
+
+## 👥 팀 협업 및 Git 컨벤션
+
+### 1. 환경변수 공유 규칙
+* **로컬 공통 변수**: `.env.example`에 기본값과 주석을 적어 Git으로 공유합니다.
+* **외부 비공개 시크릿 (OAuth Secret, JWT Secret 등)**:
+  * Git에 절대 올리지 않으며, **팀 비공개 슬랙/디스코드 채널(Canvas) 또는 팀 1Password 금고**를 통해서만 안전하게 공유합니다.
+
+### 2. 브랜치 명명 규칙
+GitHub Issues에 등록된 이슈 번호와 도메인 책임을 명확히 적습니다.
+```text
+[타입]/#[이슈번호]-[도메인]-[기능요약]
+```
+* `feat/#10-organization-core` : 신규 기능 개발
+* `fix/#15-attendance-qr-error` : 버그 수정
+* `chore/#12-infra-env-setup` : 빌드/설정/인프라 작업
+
+### 3. 커밋 메시지 규칙 (Conventional Commits)
+```text
+타입(도메인): 작업 내용 요약 (#이슈번호)
+```
+* 예시: `feat(organization): 동아리 CRUD 및 초대·가입, 권한 관리 구현 (#10)`
+* 예시: `fix(attendance): 만료된 QR 체크인 검증 오류 수정 (#15)`
+* 예시: `chore(infra): 로컬 환경변수 템플릿 및 기본 프로필 설정 (#12)`
+
+### 4. Pull Request(PR) 규칙
+* PR 생성 시 등록된 **PR 템플릿**의 체크리스트를 확인하고 작성합니다.
+* 제목에 이슈 번호를 표기하고, 본문 상단에 `resolves #이슈번호`를 적어 머지 시 이슈가 자동 Close 되도록 합니다.
+
+---
+
+## 🧪 테스트·빌드
 
 ```powershell
 .\gradlew.bat test bootJar
 ```
+* DB 연결 없이 빠르게 실행 가능한 단위/슬라이스 테스트 및 JAR 빌드 명령어입니다.
 
-DB 없이 API·보안 테스트를 실행하고 `build/libs/dongbang.jar`를 생성합니다.
-DB 통합 테스트는 CI에서 자동으로 실행합니다.
+---
 
-## CI
-
-PR 및 `main`·`develop` 푸시 시 테스트·DB 통합 테스트·JAR·Docker 빌드를 검증합니다.
-자동 배포(CD)는 아직 구성하지 않았습니다.
+## 🔄 CI 파이프라인
+* PR 생성 및 `main`/`develop` 푸시 시 GitHub Actions가 자동으로 테스트와 빌드를 검증합니다.
