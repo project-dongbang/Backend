@@ -1,14 +1,38 @@
 version: 2
 updates:
-  - package-ecosystem: gradle
-    directory: /
+  # 1. Gradle 라이브러리 의존성
+  - package-ecosystem: "gradle"
+    directory: "/"
     schedule:
-      interval: weekly
-  - package-ecosystem: github-actions
-    directory: /
+      interval: "monthly"
+    open-pull-requests-limit: 1
+    groups:
+      gradle-dependencies:
+        patterns:
+          - "*"
+    # 메이저(Major) 버전 변경은 프로젝트 호환성을 위해 자동 PR 제외
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # 2. GitHub Actions 의존성
+  - package-ecosystem: "github-actions"
+    directory: "/"
     schedule:
-      interval: weekly
-  - package-ecosystem: docker
-    directory: /
+      interval: "monthly"
+    open-pull-requests-limit: 1
+    groups:
+      actions-dependencies:
+        patterns:
+          - "*"
+
+  # 3. Docker 베이스 이미지 의존성
+  - package-ecosystem: "docker"
+    directory: "/"
     schedule:
-      interval: weekly
+      interval: "monthly"
+    open-pull-requests-limit: 1
+    # Java 21 LTS 고정을 위해 Temurin 메이저 버전 업데이트 방지
+    ignore:
+      - dependency-name: "eclipse-temurin"
+        update-types: ["version-update:semver-major"]
