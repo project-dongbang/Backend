@@ -69,4 +69,8 @@ public class MembershipAccessFacade {
                         )
                 ));
     }
+
+    public long getActiveMemberCount(Long organizationId) {
+        return membershipRepository.findAllByOrganizationIdAndStatus(organizationId, MembershipStatus.ACTIVE).size();
+    }
 }
