@@ -39,4 +39,34 @@ public class MembershipAccessFacade {
                         m.getStatus()
                 ));
     }
+
+    public Optional<MembershipSummary> getMembershipSummaryById(Long membershipId) {
+        return membershipRepository.findById(membershipId)
+                .map(m -> new MembershipSummary(
+                        m.getId(),
+                        m.getOrganization().getId(),
+                        m.getUserId(),
+                        m.getMemberName(),
+                        m.getRole(),
+                        m.getStatus()
+                ));
+    }
+
+    public java.util.Map<Long, MembershipSummary> getMembershipSummariesByIds(java.util.Collection<Long> membershipIds) {
+        if (membershipIds == null || membershipIds.isEmpty()) {
+            return java.util.Collections.emptyMap();
+        }
+        return membershipRepository.findAllByIdIn(membershipIds).stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        Membership::getId,
+                        m -> new MembershipSummary(
+                                m.getId(),
+                                m.getOrganization().getId(),
+                                m.getUserId(),
+                                m.getMemberName(),
+                                m.getRole(),
+                                m.getStatus()
+                        )
+                ));
+    }
 }
