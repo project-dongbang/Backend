@@ -8,15 +8,18 @@ import lombok.Getter;
 public class GeneralException extends RuntimeException {
 
     private final BaseErrorCode errorCode;
+    private final Object errorDetail;
 
     public GeneralException(BaseErrorCode errorCode) {
         super(errorCode.getMessage());
         this.errorCode = errorCode;
+        this.errorDetail = null;
     }
 
     public GeneralException(BaseErrorCode errorCode, String detailMessage) {
-        super(detailMessage);
+        super(errorCode.getMessage());
         this.errorCode = errorCode;
+        this.errorDetail = detailMessage;
     }
 
 }

@@ -24,6 +24,8 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -58,7 +60,7 @@ class PhotoControllerTest {
                 .willReturn(response);
 
         mvc.perform(get("/api/v1/organizations/{organizationId}/photos", orgId)
-                        .header("X-User-Id", "1")
+                        .with(user("1").roles("USER"))
                         .param("cursor", "15")
                         .param("size", "20"))
                 .andExpect(status().isOk())
@@ -83,7 +85,7 @@ class PhotoControllerTest {
                 .willReturn(response);
 
         mvc.perform(get("/api/v1/organizations/{organizationId}/photos/{photoId}", orgId, photoId)
-                        .header("X-User-Id", "1"))
+                        .with(user("1").roles("USER")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isSuccess").value(true))
                 .andExpect(jsonPath("$.result.photoId").value(10))
@@ -107,9 +109,11 @@ class PhotoControllerTest {
                 .willReturn(response);
 
         mvc.perform(multipart("/api/v1/organizations/{organizationId}/photos", orgId)
+                        .with(user("1").roles("USER"))
+                        .with(csrf())
                         .file(file)
                         .param("title", "새 사진")
-                        .header("X-User-Id", "1"))
+                )
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.isSuccess").value(true))
                 .andExpect(jsonPath("$.result.photoId").value(20))
@@ -131,7 +135,8 @@ class PhotoControllerTest {
                 .willReturn(response);
 
         mvc.perform(patch("/api/v1/organizations/{organizationId}/photos/{photoId}", orgId, photoId)
-                        .header("X-User-Id", "1")
+                        .with(user("1").roles("USER"))
+                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -145,7 +150,8 @@ class PhotoControllerTest {
         Long photoId = 20L;
 
         mvc.perform(delete("/api/v1/organizations/{organizationId}/photos/{photoId}", orgId, photoId)
-                        .header("X-User-Id", "1"))
+                        .with(user("1").roles("USER"))
+                        .with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isSuccess").value(true));
     }

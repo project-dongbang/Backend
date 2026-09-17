@@ -20,6 +20,7 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -51,7 +52,7 @@ class DashboardControllerTest {
                 .willReturn(response);
 
         mvc.perform(get("/api/v1/organizations/{organizationId}/dashboard/admin", orgId)
-                        .header("X-User-Id", "1"))
+                        .with(user("1").roles("USER")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isSuccess").value(true))
                 .andExpect(jsonPath("$.result.organizationId").value(1))
@@ -75,7 +76,7 @@ class DashboardControllerTest {
                 .willReturn(response);
 
         mvc.perform(get("/api/v1/organizations/{organizationId}/dashboard/member", orgId)
-                        .header("X-User-Id", "1"))
+                        .with(user("1").roles("USER")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isSuccess").value(true))
                 .andExpect(jsonPath("$.result.organizationId").value(1))

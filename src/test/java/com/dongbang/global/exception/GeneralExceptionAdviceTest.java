@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -46,7 +47,8 @@ class GeneralExceptionAdviceTest {
                 .andExpect(jsonPath("$.code").value("COMMON_200_001"))
                 .andExpect(jsonPath("$.message").value("성공적으로 요청을 처리했습니다."))
                 .andExpect(jsonPath("$.result").value("ok"))
-                .andExpect(jsonPath("$.errorDetail").doesNotExist());
+                .andExpect(jsonPath("$.errorDetail").value(nullValue()))
+                .andExpect(content().string(not(containsString("\"success\""))));
     }
 
     @Test
@@ -58,7 +60,7 @@ class GeneralExceptionAdviceTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.isSuccess").value(false))
                 .andExpect(jsonPath("$.code").value("COMMON_400_002"))
-                .andExpect(jsonPath("$.errorDetail[0]").value("name: 이름은 필수입니다."));
+                .andExpect(jsonPath("$.errorDetail").value("name: 이름은 필수입니다."));
     }
 
     @Test
@@ -67,7 +69,7 @@ class GeneralExceptionAdviceTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.isSuccess").value(false))
                 .andExpect(jsonPath("$.code").value("COMMON_400_002"))
-                .andExpect(jsonPath("$.errorDetail[0]").value("page: 페이지는 양수여야 합니다."));
+                .andExpect(jsonPath("$.errorDetail").value("page: 페이지는 양수여야 합니다."));
     }
 
     @Test
@@ -75,7 +77,7 @@ class GeneralExceptionAdviceTest {
         mvc.perform(get("/test/id").param("id", "secret-value"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("COMMON_400_002"))
-                .andExpect(jsonPath("$.errorDetail[0]").value("id: 타입이 올바르지 않습니다."))
+                .andExpect(jsonPath("$.errorDetail").value("id: 타입이 올바르지 않습니다."))
                 .andExpect(content().string(not(containsString("secret-value"))));
     }
 
@@ -84,7 +86,7 @@ class GeneralExceptionAdviceTest {
         mvc.perform(get("/test/id"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("COMMON_400_002"))
-                .andExpect(jsonPath("$.errorDetail[0]").value("id: 필수 파라미터가 누락되었습니다."));
+                .andExpect(jsonPath("$.errorDetail").value("id: 필수 파라미터가 누락되었습니다."));
     }
 
     @Test
@@ -95,7 +97,7 @@ class GeneralExceptionAdviceTest {
                         .content("{invalid-json}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("COMMON_400_001"))
-                .andExpect(jsonPath("$.errorDetail[0]")
+                .andExpect(jsonPath("$.errorDetail")
                         .value("요청 본문(JSON)을 올바르게 작성해 주세요."));
     }
 
@@ -140,7 +142,7 @@ class GeneralExceptionAdviceTest {
         mvc.perform(get("/test/unexpected-error"))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.code").value("COMMON_500_001"))
-                .andExpect(jsonPath("$.errorDetail").doesNotExist())
+                .andExpect(jsonPath("$.errorDetail").value(nullValue()))
                 .andExpect(content().string(not(containsString("internal-secret"))));
     }
 

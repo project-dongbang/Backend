@@ -25,6 +25,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -56,7 +58,8 @@ class OrganizationControllerTest {
                 .willReturn(response);
 
         mvc.perform(post("/api/v1/organizations")
-                        .header("X-User-Id", "1")
+                        .with(user("1").roles("USER"))
+                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
@@ -75,7 +78,8 @@ class OrganizationControllerTest {
 
         given(queryService.getOrganizationDetail(1L)).willReturn(response);
 
-        mvc.perform(get("/api/v1/organizations/1"))
+        mvc.perform(get("/api/v1/organizations/1")
+                        .with(user("1").roles("USER")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isSuccess").value(true))
                 .andExpect(jsonPath("$.code").value("COMMON_200_001"))

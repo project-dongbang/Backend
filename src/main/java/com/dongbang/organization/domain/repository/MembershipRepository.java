@@ -14,4 +14,5 @@ public interface MembershipRepository {
     List<Membership> findAllByOrganizationId(Long organizationId);
     List<Membership> findAllByOrganizationIdAndStatus(Long organizationId, MembershipStatus status);
     List<Membership> findAllByIdIn(java.util.Collection<Long> ids);
+    List<Membership> findAllUnlinkedByIdentity(String memberName, String studentNumber);
 }
