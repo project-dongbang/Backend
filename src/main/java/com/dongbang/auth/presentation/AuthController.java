@@ -94,6 +94,7 @@ public class AuthController {
     @Operation(summary = "Access Token 재발급")
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<RefreshTokenResponse>> refresh(
+            @Parameter(hidden = true)
             @CookieValue(name = AuthCookieService.REFRESH_TOKEN_COOKIE, required = false) String refreshToken,
             HttpServletRequest request
     ) {
@@ -111,6 +112,7 @@ public class AuthController {
     @Operation(summary = "현재 로그인 세션 로그아웃")
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout(
+            @Parameter(hidden = true)
             @CookieValue(name = AuthCookieService.REFRESH_TOKEN_COOKIE, required = false) String refreshToken
     ) {
         authService.logout(refreshToken);

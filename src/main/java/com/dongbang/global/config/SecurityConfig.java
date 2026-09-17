@@ -2,6 +2,7 @@ package com.dongbang.global.config;
 
 import com.dongbang.global.security.ApiSecurityExceptionHandler;
 import com.dongbang.global.security.JwtAuthenticationFilter;
+import com.dongbang.global.security.SpaCsrfTokenRequestHandler;
 import com.dongbang.auth.infrastructure.config.AuthProperties;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
@@ -51,7 +52,9 @@ public class SecurityConfig {
                 .exceptionHandling(errors -> errors
                         .authenticationEntryPoint(apiSecurityExceptionHandler)
                         .accessDeniedHandler(apiSecurityExceptionHandler))
-                .csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()));
+                .csrf(csrf -> csrf
+                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler()));
 
         jwtAuthenticationFilterProvider.ifAvailable(filter ->
                 http.addFilterBefore(filter, UsernamePasswordAuthenticationFilter.class));
