@@ -29,4 +29,12 @@ public interface MembershipJpaRepository extends JpaRepository<Membership, Long>
     @Override
     @Query("SELECT m FROM Membership m WHERE m.organization.id = :organizationId AND m.status = :status")
     List<Membership> findAllByOrganizationIdAndStatus(@Param("organizationId") Long organizationId, @Param("status") MembershipStatus status);
+
+    @Override
+    @Query("SELECT m FROM Membership m WHERE m.userId IS NULL AND m.memberName = :memberName " +
+            "AND m.studentNumber = :studentNumber AND m.status = 'ACTIVE'")
+    List<Membership> findAllUnlinkedByIdentity(
+            @Param("memberName") String memberName,
+            @Param("studentNumber") String studentNumber
+    );
 }

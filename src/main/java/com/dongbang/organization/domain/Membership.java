@@ -85,6 +85,13 @@ public class Membership {
         this.role = newRole;
     }
 
+    public void linkUser(Long userId, Instant linkedAt) {
+        if (this.userId == null) {
+            this.userId = userId;
+            this.linkedAt = linkedAt;
+        }
+    }
+
     public void leave() {
         this.status = MembershipStatus.LEFT;
         this.leftAt = Instant.now();

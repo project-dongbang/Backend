@@ -1,8 +1,11 @@
 package com.dongbang.global.security;
 
+import com.dongbang.global.exception.GeneralException;
+import com.dongbang.global.response.code.GeneralErrorCode;
 import org.springframework.core.MethodParameter;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
@@ -35,18 +38,16 @@ public class CurrentUserIdArgumentResolver implements HandlerMethodArgumentResol
                     return Long.parseLong(str);
                 } catch (NumberFormatException ignored) {}
             }
-        }
-
-        String headerUserId = webRequest.getHeader("X-User-Id");
-        if (headerUserId != null && !headerUserId.isBlank()) {
-            try {
-                return Long.parseLong(headerUserId);
-            } catch (NumberFormatException ignored) {}
+            if (principal instanceof UserDetails userDetails) {
+                try {
+                    return Long.parseLong(userDetails.getUsername());
+                } catch (NumberFormatException ignored) {}
+            }
         }
 
         CurrentUserId annotation = parameter.getParameterAnnotation(CurrentUserId.class);
         if (annotation != null && annotation.required()) {
-            return 1L;
+            throw new GeneralException(GeneralErrorCode.UNAUTHORIZED);
         }
 
         return null;
