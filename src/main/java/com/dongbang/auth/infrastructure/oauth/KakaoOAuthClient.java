@@ -19,6 +19,8 @@ import java.net.URI;
 @Component
 public class KakaoOAuthClient implements OAuthProviderClient {
 
+    private static final String EMAIL_PROPERTY_KEYS = "[\"kakao_account.email\"]";
+
     private final AuthProperties.Provider properties;
     private final RestClient restClient;
 
@@ -69,15 +71,18 @@ public class KakaoOAuthClient implements OAuthProviderClient {
                 throw new GeneralException(AuthErrorCode.OAUTH_AUTHENTICATION_FAILED);
             }
 
+            URI userInfoUri = createUserInfoUri();
             KakaoUserInfo user = restClient.get()
-                    .uri(properties.userInfoUri())
+                    .uri(userInfoUri)
                     .headers(headers -> headers.setBearerAuth(token.accessToken()))
                     .retrieve()
                     .body(KakaoUserInfo.class);
             if (user == null || user.id() == null) {
                 throw new GeneralException(AuthErrorCode.OAUTH_AUTHENTICATION_FAILED);
             }
-            String email = user.kakaoAccount() != null ? user.kakaoAccount().email() : null;
+            String email = user.kakaoAccount() != null && user.kakaoAccount().hasUsableEmail()
+                    ? user.kakaoAccount().email()
+                    : null;
             return new OAuthProfile(provider(), user.id().toString(), email);
         } catch (GeneralException ex) {
             throw ex;
@@ -92,6 +97,23 @@ public class KakaoOAuthClient implements OAuthProviderClient {
         }
     }
 
+    private URI createUserInfoUri() {
+        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(properties.userInfoUri());
+        if (requestsEmailScope()) {
+            builder.queryParam("property_keys", EMAIL_PROPERTY_KEYS);
+        }
+        return builder.build().encode().toUri();
+    }
+
+    private boolean requestsEmailScope() {
+        if (properties.scope() == null || properties.scope().isBlank()) {
+            return false;
+        }
+        return properties.scope().lines()
+                .flatMap(line -> java.util.Arrays.stream(line.split("[,\\s]+")))
+                .anyMatch("account_email"::equals);
+    }
+
     private record KakaoTokenResponse(
             @JsonProperty("access_token") String accessToken
     ) {
@@ -103,6 +125,16 @@ public class KakaoOAuthClient implements OAuthProviderClient {
     ) {
     }
 
-    private record KakaoAccount(String email) {
+    private record KakaoAccount(
+            @JsonProperty("is_email_valid") Boolean emailValid,
+            @JsonProperty("is_email_verified") Boolean emailVerified,
+            String email
+    ) {
+        private boolean hasUsableEmail() {
+            return Boolean.TRUE.equals(emailValid)
+                    && Boolean.TRUE.equals(emailVerified)
+                    && email != null
+                    && !email.isBlank();
+        }
     }
 }

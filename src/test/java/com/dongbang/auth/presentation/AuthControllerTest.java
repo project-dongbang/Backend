@@ -68,6 +68,27 @@ class AuthControllerTest {
     }
 
     @Test
+    @DisplayName("Kakao OAuth 시작 API는 state 쿠키를 저장하고 Kakao 인증 화면으로 이동시킨다")
+    void authorizeKakao() throws Exception {
+        String redirectUri = "http://localhost:5173";
+        URI kakaoUri = URI.create("https://kauth.kakao.com/oauth/authorize?state=signed-state");
+        given(authService.createAuthorization(OAuthProvider.KAKAO, redirectUri))
+                .willReturn(new OAuthAuthorizationResult(kakaoUri, "signed-state"));
+        given(cookieService.oauthState(OAuthProvider.KAKAO, "signed-state"))
+                .willReturn(ResponseCookie.from("oauth_state_kakao", "signed-state")
+                        .httpOnly(true)
+                        .path("/api/v1/auth/oauth/kakao/callback")
+                        .build());
+
+        mvc.perform(get("/api/v1/auth/oauth/kakao/authorize")
+                        .queryParam("redirectUri", redirectUri))
+                .andExpect(status().isFound())
+                .andExpect(header().string("Location", kakaoUri.toString()))
+                .andExpect(header().string("Set-Cookie",
+                        org.hamcrest.Matchers.containsString("oauth_state_kakao=signed-state")));
+    }
+
+    @Test
     @DisplayName("가입 대기 사용자는 내 인증 상태를 조회할 수 있다")
     void getMeBeforeOnboarding() throws Exception {
         given(authService.getMe(7L)).willReturn(new AuthMeResponse(

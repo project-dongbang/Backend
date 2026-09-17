@@ -68,4 +68,4 @@ app:
       authorization-uri: https://kauth.kakao.com/oauth/authorize
       token-uri: https://kauth.kakao.com/oauth/token
       user-info-uri: https://kapi.kakao.com/v2/user/me
-      scope: account_email
+      scope: ${KAKAO_SCOPE:}
