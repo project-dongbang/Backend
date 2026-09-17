@@ -13,4 +13,5 @@ public interface MembershipRepository {
     List<Membership> findAllByUserId(Long userId);
     List<Membership> findAllByOrganizationId(Long organizationId);
     List<Membership> findAllByOrganizationIdAndStatus(Long organizationId, MembershipStatus status);
+    List<Membership> findAllByIdIn(java.util.Collection<Long> ids);
 }
