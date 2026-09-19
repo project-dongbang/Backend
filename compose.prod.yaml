@@ -1,0 +1,56 @@
+name: dongbang-prod
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-dongbang}
+      POSTGRES_USER: ${POSTGRES_USER:-dongbang}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  api:
+    image: ${IMAGE_NAME:-ghcr.io/project-dongbang/backend:latest}
+    restart: always
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-dongbang}
+      DB_USERNAME: ${POSTGRES_USER:-dongbang}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-true}
+      AUTH_ALLOWED_REDIRECT_URIS: ${AUTH_ALLOWED_REDIRECT_URIS:?Set AUTH_ALLOWED_REDIRECT_URIS in .env}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_CALLBACK_URI: ${GOOGLE_CALLBACK_URI:-}
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:-}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:-}
+      KAKAO_CALLBACK_URI: ${KAKAO_CALLBACK_URI:-}
+      AWS_S3_ENABLED: ${AWS_S3_ENABLED:-true}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET:?Set AWS_S3_BUCKET in .env}
+      AWS_REGION: ${AWS_REGION:-ap-northeast-2}
+      AWS_S3_ENDPOINT: ${AWS_S3_ENDPOINT:-}
+      AWS_S3_CUSTOM_DOMAIN: ${AWS_S3_CUSTOM_DOMAIN:-}
+      AWS_S3_URL_TTL: ${AWS_S3_URL_TTL:-PT15M}
+    ports:
+      - "${APP_PORT:-80}:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/actuator/health/readiness"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+    stop_grace_period: 30s
+
+volumes:
+  postgres-data:
