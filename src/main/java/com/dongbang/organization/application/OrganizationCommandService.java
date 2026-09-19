@@ -10,6 +10,8 @@ import com.dongbang.organization.presentation.dto.request.*;
 import com.dongbang.organization.presentation.dto.response.CreateOrganizationResponse;
 import com.dongbang.organization.presentation.dto.response.InvitationResponse;
 import com.dongbang.organization.presentation.dto.response.JoinOrganizationResponse;
+import com.dongbang.user.application.facade.UserAccountFacade;
+import com.dongbang.user.application.facade.UserAccountSummary;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +28,7 @@ public class OrganizationCommandService {
     private final OrganizationRepository organizationRepository;
     private final MembershipRepository membershipRepository;
     private final InvitationRepository invitationRepository;
+    private final UserAccountFacade userAccountFacade;
 
     public CreateOrganizationResponse createOrganization(Long userId, CreateOrganizationRequest request) {
         if (organizationRepository.existsBySlug(request.slug())) {
@@ -40,11 +43,13 @@ public class OrganizationCommandService {
                 .build();
         Organization saved = organizationRepository.save(organization);
 
+        UserAccountSummary account = userAccountFacade.getAccount(userId);
+
         Membership owner = Membership.builder()
                 .organization(saved)
                 .userId(userId)
-                .memberName("대표자")
-                .studentNumber("00000000")
+                .memberName(account.name())
+                .studentNumber(account.studentNumber())
                 .role(MembershipRole.OWNER)
                 .build();
         membershipRepository.save(owner);
@@ -102,11 +107,13 @@ public class OrganizationCommandService {
                     throw new GeneralException(OrganizationErrorCode.ALREADY_JOINED_MEMBER);
                 });
 
+        UserAccountSummary account = userAccountFacade.getAccount(userId);
+
         Membership member = Membership.builder()
                 .organization(organization)
                 .userId(userId)
-                .memberName("신규 회원")
-                .studentNumber("00000000")
+                .memberName(account.name())
+                .studentNumber(account.studentNumber())
                 .role(MembershipRole.MEMBER)
                 .build();
         Membership saved = membershipRepository.save(member);
