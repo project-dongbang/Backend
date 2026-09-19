@@ -39,6 +39,9 @@ class OrganizationCommandServiceTest {
     @Mock
     private InvitationRepository invitationRepository;
 
+    @Mock
+    private com.dongbang.user.application.facade.UserAccountFacade userAccountFacade;
+
     @InjectMocks
     private OrganizationCommandService organizationCommandService;
 
@@ -64,6 +67,12 @@ class OrganizationCommandServiceTest {
 
             given(organizationRepository.existsBySlug("dongbang-dev")).willReturn(false);
             given(organizationRepository.save(any(Organization.class))).willReturn(savedOrg);
+            given(userAccountFacade.getAccount(userId)).willReturn(
+                    new com.dongbang.user.application.facade.UserAccountSummary(
+                            userId, "홍길동", "20240001", "컴퓨터공학과", "test@dongbang.com",
+                            com.dongbang.user.domain.UserStatus.ACTIVE, Instant.now()
+                    )
+            );
 
             // when
             CreateOrganizationResponse response = organizationCommandService.createOrganization(userId, request);
@@ -171,6 +180,43 @@ class OrganizationCommandServiceTest {
             assertThatThrownBy(() -> organizationCommandService.delegateOwner(ownerUserId, orgId, new DelegateOwnerRequest(targetMemberId)))
                     .isInstanceOf(GeneralException.class)
                     .hasFieldOrPropertyWithValue("errorCode", OrganizationErrorCode.INVALID_DELEGATION_TARGET);
+        }
+    }
+
+    @Nested
+    @DisplayName("초대 수락 및 가입")
+    class AcceptInvitationTest {
+
+        @Test
+        @DisplayName("성공: 유효한 초대 토큰으로 가입 시 회원의 실제 프로필 정보로 MEMBER가 생성된다")
+        void success() {
+            // given
+            Long userId = 2L;
+            String token = "valid-token";
+            Organization org = Organization.builder().id(10L).name("동방").slug("dongbang").build();
+            Invitation invitation = Invitation.builder()
+                    .organization(org)
+                    .tokenHash(token)
+                    .expiresAt(Instant.now().plus(24, ChronoUnit.HOURS))
+                    .build();
+
+            given(invitationRepository.findByTokenHash(token)).willReturn(Optional.of(invitation));
+            given(membershipRepository.findByOrganizationIdAndUserId(10L, userId)).willReturn(Optional.empty());
+            given(userAccountFacade.getAccount(userId)).willReturn(
+                    new com.dongbang.user.application.facade.UserAccountSummary(
+                            userId, "이순신", "20240002", "기계공학과", "soonshin@dongbang.com",
+                            com.dongbang.user.domain.UserStatus.ACTIVE, Instant.now()
+                    )
+            );
+            given(membershipRepository.save(any(Membership.class))).willAnswer(invocation -> invocation.getArgument(0));
+
+            // when
+            JoinOrganizationResponse response = organizationCommandService.acceptInvitation(userId, token);
+
+            // then
+            assertThat(response.organizationId()).isEqualTo(10L);
+            assertThat(response.role()).isEqualTo(MembershipRole.MEMBER);
+            verify(membershipRepository).save(any(Membership.class));
         }
     }
 

@@ -27,6 +27,11 @@ public class SwaggerConfig {
                     .type(SecurityScheme.Type.APIKEY)
                     .in(SecurityScheme.In.HEADER)
                     .name("X-XSRF-TOKEN")
-                    .description("상태 변경 요청에 필요한 CSRF 헤더")));
+                    .description("상태 변경 요청에 필요한 CSRF 헤더"))
+                .addSecuritySchemes("bearerAuth", new SecurityScheme()
+                    .type(SecurityScheme.Type.HTTP)
+                    .scheme("bearer")
+                    .bearerFormat("JWT")
+                    .description("JWT Bearer 토큰 (Authorization: Bearer <token>)")));
     }
 }
