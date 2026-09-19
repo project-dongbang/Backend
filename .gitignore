@@ -35,6 +35,7 @@ out/
 .env
 .env.*
 !.env.example
+!.env.prod.example
 .gradle-user-home/
 .docker-local/
 *.log

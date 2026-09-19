@@ -2,7 +2,7 @@
 
 Java 21 · Spring Boot 4.1.1 · PostgreSQL 17 · Docker Compose
 
-현재 로컬 개발 환경과 CI 구성 단계입니다. 인증·업무 기능·서버 배포는 미구현입니다.
+로컬 개발, CI, GitHub Actions 기반 EC2 배포를 지원합니다.
 
 ## 프로젝트 구조
 
@@ -114,3 +114,29 @@ GitHub Issues에 등록된 이슈 번호와 도메인 책임을 명확히 적습
 
 ## 🔄 CI 파이프라인
 * PR 생성 및 `main`/`develop` 푸시 시 GitHub Actions가 자동으로 테스트와 빌드를 검증합니다.
+
+## 🚢 운영 배포
+
+`main` 브랜치에 반영되면 Backend CD 워크플로가 아래 순서로 배포합니다.
+
+1. 단위 테스트와 PostgreSQL 통합 테스트 실행
+2. ARM64 운영 이미지를 GHCR에 커밋 SHA 태그로 푸시
+3. `compose.prod.yaml`과 `.env.prod.example`을 EC2에 동기화
+4. 지정된 SHA 이미지를 배포하고 readiness 상태까지 대기
+
+### 최초 EC2 설정
+
+```bash
+bash scripts/ec2-setup.sh
+cd /home/ubuntu/dongbang
+cp .env.prod.example .env
+chmod 600 .env
+```
+
+`.env`의 데이터베이스, JWT, OAuth, S3 값을 실제 운영 값으로 변경해야 합니다. EC2에는 장기 AWS Access Key를 저장하지 않고 다음 권한을 가진 IAM Role을 연결합니다.
+
+- `s3:PutObject`
+- `s3:GetObject`
+- `s3:DeleteObject`
+
+GitHub 저장소에는 `EC2_HOST`, `EC2_USER`, `EC2_SSH_KEY` Actions Secret이 필요합니다. 운영 S3 버킷은 비공개로 유지하고, 공개 조회가 필요하면 `AWS_S3_CUSTOM_DOMAIN`에 CloudFront 도메인을 설정합니다.

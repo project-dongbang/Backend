@@ -1,0 +1,8 @@
+FROM eclipse-temurin:21-jre-alpine
+RUN addgroup -S dongbang && adduser -S dongbang -G dongbang
+WORKDIR /app
+COPY build/libs/dongbang.jar app.jar
+RUN chown dongbang:dongbang app.jar
+USER dongbang
+EXPOSE 8080
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=70.0", "-jar", "/app/app.jar"]
