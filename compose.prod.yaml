@@ -40,7 +40,7 @@ services:
       AWS_S3_CUSTOM_DOMAIN: ${AWS_S3_CUSTOM_DOMAIN:-}
       AWS_S3_URL_TTL: ${AWS_S3_URL_TTL:-PT15M}
     ports:
-      - "${APP_PORT:-80}:8080"
+      - "127.0.0.1:${APP_PORT:-8080}:8080"
     depends_on:
       db:
         condition: service_healthy
@@ -52,5 +52,23 @@ services:
       start_period: 40s
     stop_grace_period: 30s
 
+  proxy:
+    image: caddy:2.9-alpine
+    restart: always
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?Set API_DOMAIN in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+
 volumes:
   postgres-data:
+  caddy-data:
+  caddy-config:
