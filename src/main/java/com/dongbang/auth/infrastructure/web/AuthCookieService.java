@@ -68,7 +68,7 @@ public class AuthCookieService {
         return ResponseCookie.from(name, value)
                 .httpOnly(true)
                 .secure(properties.cookieSecure())
-                .sameSite("Lax")
+                .sameSite(properties.cookieSecure() ? "None" : "Lax")
                 .path(path)
                 .maxAge(maxAge)
                 .build();
@@ -78,7 +78,7 @@ public class AuthCookieService {
         return ResponseCookie.from(name, "")
                 .httpOnly(true)
                 .secure(properties.cookieSecure())
-                .sameSite("Lax")
+                .sameSite(properties.cookieSecure() ? "None" : "Lax")
                 .path(path)
                 .maxAge(Duration.ZERO)
                 .build();
