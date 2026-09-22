@@ -21,7 +21,8 @@ public enum OrganizationErrorCode implements BaseErrorCode {
     OWNER_CANNOT_LEAVE(HttpStatus.BAD_REQUEST, "ORG_400_002", "회장은 대표 권한을 위임하기 전까지 탈퇴할 수 없습니다."),
 
     STAFF_REQUIRED(HttpStatus.FORBIDDEN, "AUTH_403_001", "운영진 이상의 권한이 필요합니다."),
-    OWNER_REQUIRED(HttpStatus.FORBIDDEN, "AUTH_403_002", "회장(OWNER) 권한이 필요합니다.");
+    OWNER_REQUIRED(HttpStatus.FORBIDDEN, "AUTH_403_002", "회장(OWNER) 권한이 필요합니다."),
+    MEMBER_REQUIRED(HttpStatus.FORBIDDEN, "AUTH_403_003", "동아리 회원 권한이 필요합니다.");
 
     private final HttpStatus httpStatus;
     private final String code;

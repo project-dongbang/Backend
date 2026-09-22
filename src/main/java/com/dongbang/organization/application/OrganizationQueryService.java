@@ -40,7 +40,10 @@ public class OrganizationQueryService {
         return new MyOrganizationResponse(items);
     }
 
-    public OrganizationDetailResponse getOrganizationDetail(Long organizationId) {
+    public OrganizationDetailResponse getOrganizationDetail(Long organizationId, Long userId) {
+        membershipRepository.findByOrganizationIdAndUserId(organizationId, userId)
+                .orElseThrow(() -> new GeneralException(OrganizationErrorCode.MEMBER_REQUIRED));
+
         Organization organization = organizationRepository.findById(organizationId)
                 .filter(o -> o.getStatus() == OrganizationStatus.ACTIVE)
                 .orElseThrow(() -> new GeneralException(OrganizationErrorCode.ORGANIZATION_NOT_FOUND));

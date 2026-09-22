@@ -76,7 +76,7 @@ class OrganizationControllerTest {
                 1L, "동방 개발팀", "dongbang-dev", "설명", null, 10L, Instant.now()
         );
 
-        given(queryService.getOrganizationDetail(1L)).willReturn(response);
+        given(queryService.getOrganizationDetail(1L, 1L)).willReturn(response);
 
         mvc.perform(get("/api/v1/organizations/1")
                         .with(user("1").roles("USER")))
