@@ -4,3 +4,7 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/dongbang}
     username: ${DB_USERNAME:dongbang}
     password: ${DB_PASSWORD:dongbang_local_only}
+
+app:
+  receipt-ocr:
+    url: ${RECEIPT_OCR_URL:http://localhost:8000}

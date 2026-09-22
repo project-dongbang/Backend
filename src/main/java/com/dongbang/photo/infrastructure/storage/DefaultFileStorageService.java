@@ -24,9 +24,14 @@ public class DefaultFileStorageService implements FileStorageService {
 
     @Override
     public FileStorageResult store(MultipartFile file, Long organizationId) {
+        return store(file, organizationId, "photos");
+    }
+
+    @Override
+    public FileStorageResult store(MultipartFile file, Long organizationId, String directory) {
         ImageFileValidator.ValidatedImage image = ImageFileValidator.validate(file);
         String uniqueFileName = UUID.randomUUID() + image.extension();
-        String storageKey = String.format("organizations/%d/photos/%s", organizationId, uniqueFileName);
+        String storageKey = String.format("organizations/%d/%s/%s", organizationId, directory, uniqueFileName);
 
         Path target = rootDirectory.resolve(storageKey).normalize();
         if (!target.startsWith(rootDirectory)) {

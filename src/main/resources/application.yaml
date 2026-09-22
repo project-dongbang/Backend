@@ -49,6 +49,8 @@ springdoc:
       header-name: X-XSRF-TOKEN
 
 app:
+  receipt-ocr:
+    url: ${RECEIPT_OCR_URL:http://ocr:8000}
   storage:
     local-dir: ${LOCAL_UPLOAD_DIR:${java.io.tmpdir}/dongbang-uploads}
   auth:

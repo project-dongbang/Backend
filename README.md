@@ -71,6 +71,35 @@ docker compose up -d db
   ```
   *(팁: IntelliJ 플러그인 `EnvFile`을 설치하면 `.env` 파일을 체크 한 번으로 자동 주입할 수 있습니다.)*
 
+### 4. 영수증 OCR 실행
+영수증 OCR은 PaddleOCR 전용 컨테이너를 함께 실행해야 합니다. 처음 기동할 때는 모델 다운로드 때문에 healthcheck가 준비 상태가 되기까지 최대 5분 정도 걸릴 수 있습니다.
+
+```powershell
+docker compose --profile app up -d --build
+docker compose --profile app ps
+```
+
+`ocr`가 `healthy`가 된 뒤 API를 실행합니다. IntelliJ로 API만 실행하는 경우에는 OCR 컨테이너만 별도로 띄울 수 있습니다.
+
+```powershell
+docker compose --profile app up -d ocr
+```
+
+IntelliJ로 API를 실행할 때 OCR 주소는 로컬 `.env`의 `RECEIPT_OCR_URL=http://localhost:8000`을 사용합니다. Docker Compose로 API까지 함께 실행할 때는 Compose가 컨테이너 내부 주소 `http://ocr:8000`을 자동 사용합니다. `GEMINI_API_KEY`는 선택값이며, 비워 두면 PaddleOCR 원문과 기본 분류만 저장합니다.
+
+### 5. 로컬 S3 테스트 (필요한 경우만)
+기본값은 `AWS_S3_ENABLED=false`이며 로컬 파일 저장소를 사용합니다. 실제 S3 업로드를 시험할 팀원만 개인 `.env`에 아래 값을 넣습니다. 실제 키는 공유 저장소나 PR에 올리지 않습니다.
+
+```text
+AWS_S3_ENABLED=true
+AWS_S3_BUCKET=<팀 S3 버킷 이름>
+AWS_REGION=ap-northeast-2
+AWS_ACCESS_KEY_ID=<개인 IAM Access Key ID>
+AWS_SECRET_ACCESS_KEY=<개인 IAM Secret Access Key>
+```
+
+영수증은 `organizations/{organizationId}/receipts/*`, 프로필 이미지는 `organizations/{organizationId}/profiles/*` 경로에 저장됩니다. 개발 IAM 정책은 두 prefix에 대해서만 `s3:ListBucket`, `s3:GetObject`, `s3:PutObject`, `s3:DeleteObject`를 허용해야 합니다.
+
 ---
 
 ## 👥 팀 협업 및 Git 컨벤션
@@ -133,10 +162,12 @@ cp .env.prod.example .env
 chmod 600 .env
 ```
 
-`.env`의 데이터베이스, JWT, OAuth, S3 값을 실제 운영 값으로 변경해야 합니다. EC2에는 장기 AWS Access Key를 저장하지 않고 다음 권한을 가진 IAM Role을 연결합니다.
+`.env`의 데이터베이스, JWT, OAuth, S3 값과 선택적인 `GEMINI_API_KEY`를 실제 운영 값으로 변경해야 합니다. EC2에는 장기 AWS Access Key를 저장하지 않고 다음 권한을 가진 IAM Role을 연결합니다. `RECEIPT_OCR_URL`은 운영 Compose 내부 통신 주소인 `http://ocr:8000`을 유지합니다.
 
 - `s3:PutObject`
 - `s3:GetObject`
 - `s3:DeleteObject`
+
+권한 범위는 버킷 전체가 아니라 `organizations/*/receipts/*`, `organizations/*/profiles/*` 객체와 해당 prefix의 목록 조회로 제한합니다.
 
 GitHub 저장소에는 `EC2_HOST`, `EC2_USER`, `EC2_SSH_KEY` Actions Secret이 필요합니다. 운영 S3 버킷은 비공개로 유지하고, 공개 조회가 필요하면 `AWS_S3_CUSTOM_DOMAIN`에 CloudFront 도메인을 설정합니다.
