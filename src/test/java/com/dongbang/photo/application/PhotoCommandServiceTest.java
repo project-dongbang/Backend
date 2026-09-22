@@ -158,17 +158,6 @@ class PhotoCommandServiceTest {
 
             given(membershipAccessFacade.isStaff(orgId, userId)).willReturn(true);
             given(photoRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(photoId, orgId)).willReturn(Optional.of(photo));
-            UploadedFile uploadedFile = UploadedFile.builder()
-                    .id(1L)
-                    .organizationId(orgId)
-                    .uploadedByMembershipId(membershipId)
-                    .storageKey("organizations/1/photos/deleted.jpg")
-                    .originalName("deleted.jpg")
-                    .contentType("image/jpeg")
-                    .sizeBytes(100L)
-                    .build();
-            given(uploadedFileRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(1L, orgId))
-                    .willReturn(Optional.of(uploadedFile));
             given(uploadedFileRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(1L, orgId)).willReturn(Optional.of(file));
             given(membershipAccessFacade.getMembershipSummaryById(membershipId)).willReturn(Optional.of(summary));
             given(fileStorageService.getFileUrl("key")).willReturn("/uploads/key");
@@ -216,6 +205,17 @@ class PhotoCommandServiceTest {
 
             given(membershipAccessFacade.isStaff(orgId, userId)).willReturn(true);
             given(photoRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(photoId, orgId)).willReturn(Optional.of(photo));
+            UploadedFile uploadedFile = UploadedFile.builder()
+                    .id(1L)
+                    .organizationId(orgId)
+                    .uploadedByMembershipId(membershipId)
+                    .storageKey("organizations/1/photos/deleted.jpg")
+                    .originalName("deleted.jpg")
+                    .contentType("image/jpeg")
+                    .sizeBytes(100L)
+                    .build();
+            given(uploadedFileRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(1L, orgId))
+                    .willReturn(Optional.of(uploadedFile));
 
             // when
             photoCommandService.deletePhoto(orgId, userId, photoId);
