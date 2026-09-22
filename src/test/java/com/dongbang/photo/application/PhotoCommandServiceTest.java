@@ -205,6 +205,17 @@ class PhotoCommandServiceTest {
 
             given(membershipAccessFacade.isStaff(orgId, userId)).willReturn(true);
             given(photoRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(photoId, orgId)).willReturn(Optional.of(photo));
+            UploadedFile uploadedFile = UploadedFile.builder()
+                    .id(1L)
+                    .organizationId(orgId)
+                    .uploadedByMembershipId(membershipId)
+                    .storageKey("organizations/1/photos/deleted.jpg")
+                    .originalName("deleted.jpg")
+                    .contentType("image/jpeg")
+                    .sizeBytes(100L)
+                    .build();
+            given(uploadedFileRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(1L, orgId))
+                    .willReturn(Optional.of(uploadedFile));
 
             // when
             photoCommandService.deletePhoto(orgId, userId, photoId);
@@ -212,6 +223,7 @@ class PhotoCommandServiceTest {
             // then
             assertThat(photo.isDeleted()).isTrue();
             assertThat(photo.getDeletedAt()).isNotNull();
+            assertThat(uploadedFile.isDeleted()).isTrue();
         }
 
         @Test

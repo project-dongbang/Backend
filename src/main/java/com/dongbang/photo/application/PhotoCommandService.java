@@ -36,27 +36,29 @@ public class PhotoCommandService {
                 .orElseThrow(() -> new GeneralException(PhotoErrorCode.MEMBER_REQUIRED));
 
         FileStorageResult storageResult = fileStorageService.store(file, organizationId);
+        try {
+            UploadedFile uploadedFile = uploadedFileRepository.save(UploadedFile.builder()
+                    .organizationId(organizationId)
+                    .uploadedByMembershipId(uploader.membershipId())
+                    .storageKey(storageResult.storageKey())
+                    .originalName(storageResult.originalName())
+                    .contentType(storageResult.contentType())
+                    .sizeBytes(storageResult.sizeBytes())
+                    .checksum(storageResult.checksum())
+                    .build());
 
-        UploadedFile uploadedFile = UploadedFile.builder()
-                .organizationId(organizationId)
-                .uploadedByMembershipId(uploader.membershipId())
-                .storageKey(storageResult.storageKey())
-                .originalName(storageResult.originalName())
-                .contentType(storageResult.contentType())
-                .sizeBytes(storageResult.sizeBytes())
-                .checksum(storageResult.checksum())
-                .build();
-        uploadedFile = uploadedFileRepository.save(uploadedFile);
+            Photo photo = photoRepository.save(Photo.builder()
+                    .organizationId(organizationId)
+                    .uploadedFileId(uploadedFile.getId())
+                    .membershipId(uploader.membershipId())
+                    .title(title)
+                    .build());
 
-        Photo photo = Photo.builder()
-                .organizationId(organizationId)
-                .uploadedFileId(uploadedFile.getId())
-                .membershipId(uploader.membershipId())
-                .title(title)
-                .build();
-        photo = photoRepository.save(photo);
-
-        return toDetailResponse(photo, uploadedFile, uploader.memberName());
+            return toDetailResponse(photo, uploadedFile, uploader.memberName());
+        } catch (RuntimeException ex) {
+            fileStorageService.delete(storageResult.storageKey());
+            throw ex;
+        }
     }
 
     public PhotoDetailResponse createPhotoWithFileId(Long organizationId, Long userId, Long uploadedFileId, String title) {
@@ -103,7 +105,12 @@ public class PhotoCommandService {
         Photo photo = photoRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(photoId, organizationId)
                 .orElseThrow(() -> new GeneralException(PhotoErrorCode.PHOTO_NOT_FOUND));
 
+        UploadedFile uploadedFile = uploadedFileRepository
+                .findByIdAndOrganizationIdAndDeletedAtIsNull(photo.getUploadedFileId(), organizationId)
+                .orElseThrow(() -> new GeneralException(PhotoErrorCode.FILE_NOT_FOUND));
         photo.delete();
+        uploadedFile.delete();
+        fileStorageService.delete(uploadedFile.getStorageKey());
     }
 
     private void validateStaff(Long organizationId, Long userId) {

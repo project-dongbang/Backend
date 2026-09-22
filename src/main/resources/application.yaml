@@ -49,6 +49,8 @@ springdoc:
       header-name: X-XSRF-TOKEN
 
 app:
+  storage:
+    local-dir: ${LOCAL_UPLOAD_DIR:${java.io.tmpdir}/dongbang-uploads}
   auth:
     issuer: dongbang
     jwt-secret: ${JWT_SECRET:local-development-only-jwt-secret-change-before-production}
