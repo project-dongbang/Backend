@@ -1,0 +1,143 @@
+package com.dongbang.mypage.application;
+
+import com.dongbang.auth.domain.OAuthAccount;
+import com.dongbang.auth.domain.OAuthProvider;
+import com.dongbang.auth.domain.repository.OAuthAccountRepository;
+import com.dongbang.global.exception.GeneralException;
+import com.dongbang.global.response.code.GeneralErrorCode;
+import com.dongbang.mypage.presentation.dto.request.UpdateMyProfileRequest;
+import com.dongbang.mypage.presentation.dto.response.CurrentMembershipResponse;
+import com.dongbang.mypage.presentation.dto.response.MyProfileResponse;
+import com.dongbang.mypage.presentation.dto.response.UpdateMyProfileResponse;
+import com.dongbang.organization.domain.Membership;
+import com.dongbang.organization.domain.MembershipStatus;
+import com.dongbang.organization.domain.OrganizationStatus;
+import com.dongbang.organization.domain.repository.MembershipRepository;
+import com.dongbang.organization.domain.repository.OrganizationRepository;
+import com.dongbang.user.domain.User;
+import com.dongbang.user.domain.repository.UserRepository;
+import com.dongbang.user.exception.UserErrorCode;
+import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Comparator;
+import java.util.List;
+import java.util.Locale;
+
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class MyPageService {
+
+    private final UserRepository userRepository;
+    private final OAuthAccountRepository oauthAccountRepository;
+    private final OrganizationRepository organizationRepository;
+    private final MembershipRepository membershipRepository;
+
+    public MyProfileResponse getMyProfile(Long userId, Long organizationId) {
+        User user = findUser(userId);
+        CurrentMembershipResponse currentMembership = organizationId == null
+                ? null
+                : getCurrentMembership(organizationId, userId);
+
+        List<OAuthProvider> providers = oauthAccountRepository.findAllByUserId(userId).stream()
+                .map(OAuthAccount::getProvider)
+                .distinct()
+                .sorted(Comparator.comparing(Enum::name))
+                .toList();
+
+        return new MyProfileResponse(
+                user.getId(),
+                user.getName(),
+                user.getStudentNumber(),
+                user.getDepartment(),
+                user.getEmail(),
+                user.getProfileImageUrl(),
+                providers,
+                currentMembership
+        );
+    }
+
+    @Transactional
+    public UpdateMyProfileResponse updateMyProfile(Long userId, UpdateMyProfileRequest request) {
+        User user = findUser(userId);
+        String name = normalizeOptional(request.name());
+        String studentNumber = normalizeOptional(request.studentNumber());
+        String department = normalizeOptional(request.department());
+        String email = normalizeEmail(request.email());
+
+        if (email != null && userRepository.existsByEmailAndIdNot(email, userId)) {
+            throw new GeneralException(UserErrorCode.EMAIL_ALREADY_EXISTS);
+        }
+        if (studentNumber != null && userRepository.existsByStudentNumberAndIdNot(studentNumber, userId)) {
+            throw new GeneralException(UserErrorCode.STUDENT_NUMBER_ALREADY_EXISTS);
+        }
+
+        user.updateProfile(name, studentNumber, department, email);
+        try {
+            userRepository.flush();
+        } catch (DataIntegrityViolationException ex) {
+            throw mapDuplicate(ex);
+        }
+
+        return new UpdateMyProfileResponse(
+                user.getId(),
+                user.getName(),
+                user.getStudentNumber(),
+                user.getDepartment(),
+                user.getEmail(),
+                user.getUpdatedAt()
+        );
+    }
+
+    private CurrentMembershipResponse getCurrentMembership(Long organizationId, Long userId) {
+        organizationRepository.findById(organizationId)
+                .filter(organization -> organization.getStatus() == OrganizationStatus.ACTIVE)
+                .orElseThrow(() -> new GeneralException(GeneralErrorCode.NOT_FOUND));
+
+        Membership membership = membershipRepository.findByOrganizationIdAndUserId(organizationId, userId)
+                .filter(item -> item.getStatus() == MembershipStatus.ACTIVE)
+                .orElseThrow(() -> new GeneralException(GeneralErrorCode.FORBIDDEN));
+
+        String role = "ADMIN".equals(membership.getRole().name())
+                ? "MANAGER"
+                : membership.getRole().name();
+        return new CurrentMembershipResponse(
+                organizationId,
+                role,
+                membership.getGeneration(),
+                membership.getPosition()
+        );
+    }
+
+    private User findUser(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new GeneralException(UserErrorCode.USER_NOT_FOUND));
+    }
+
+    private String normalizeOptional(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim();
+        if (normalized.isEmpty()) {
+            throw new GeneralException(GeneralErrorCode.VALIDATION_ERROR);
+        }
+        return normalized;
+    }
+
+    private String normalizeEmail(String value) {
+        String normalized = normalizeOptional(value);
+        return normalized == null ? null : normalized.toLowerCase(Locale.ROOT);
+    }
+
+    private GeneralException mapDuplicate(DataIntegrityViolationException ex) {
+        String message = ex.getMostSpecificCause().getMessage();
+        if (message != null && message.contains("uq_users_student_number")) {
+            return new GeneralException(UserErrorCode.STUDENT_NUMBER_ALREADY_EXISTS);
+        }
+        return new GeneralException(UserErrorCode.EMAIL_ALREADY_EXISTS);
+    }
+}
