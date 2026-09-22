@@ -9,6 +9,7 @@ import com.dongbang.organization.exception.OrganizationErrorCode;
 import com.dongbang.organization.presentation.dto.request.*;
 import com.dongbang.organization.presentation.dto.response.CreateOrganizationResponse;
 import com.dongbang.organization.presentation.dto.response.JoinOrganizationResponse;
+import com.dongbang.auth.infrastructure.token.TokenHashService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -41,6 +42,9 @@ class OrganizationCommandServiceTest {
 
     @Mock
     private com.dongbang.user.application.facade.UserAccountFacade userAccountFacade;
+
+    @Mock
+    private TokenHashService tokenHashService;
 
     @InjectMocks
     private OrganizationCommandService organizationCommandService;
@@ -193,14 +197,16 @@ class OrganizationCommandServiceTest {
             // given
             Long userId = 2L;
             String token = "valid-token";
+            String tokenHash = "hashed-token";
             Organization org = Organization.builder().id(10L).name("동방").slug("dongbang").build();
             Invitation invitation = Invitation.builder()
                     .organization(org)
-                    .tokenHash(token)
+                    .tokenHash(tokenHash)
                     .expiresAt(Instant.now().plus(24, ChronoUnit.HOURS))
                     .build();
 
-            given(invitationRepository.findByTokenHash(token)).willReturn(Optional.of(invitation));
+            given(tokenHashService.hash(token)).willReturn(tokenHash);
+            given(invitationRepository.findByTokenHash(tokenHash)).willReturn(Optional.of(invitation));
             given(membershipRepository.findByOrganizationIdAndUserId(10L, userId)).willReturn(Optional.empty());
             given(userAccountFacade.getAccount(userId)).willReturn(
                     new com.dongbang.user.application.facade.UserAccountSummary(

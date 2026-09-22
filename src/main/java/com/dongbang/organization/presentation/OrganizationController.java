@@ -157,9 +157,10 @@ public class OrganizationController {
     @Operation(summary = "동아리 상세 조회", description = "동아리의 기본 정보와 현재 상태를 조회합니다.")
     @GetMapping("/api/v1/organizations/{organizationId}")
     public ApiResponse<OrganizationDetailResponse> getOrganizationDetail(
+            @Parameter(hidden = true) @CurrentUserId Long userId,
             @Parameter(description = "동아리 ID") @PathVariable Long organizationId
     ) {
-        OrganizationDetailResponse response = queryService.getOrganizationDetail(organizationId);
+        OrganizationDetailResponse response = queryService.getOrganizationDetail(organizationId, userId);
         return ApiResponse.onSuccess(GeneralSuccessCode.OK, response);
     }
 }

@@ -10,6 +10,7 @@ import com.dongbang.organization.presentation.dto.request.*;
 import com.dongbang.organization.presentation.dto.response.CreateOrganizationResponse;
 import com.dongbang.organization.presentation.dto.response.InvitationResponse;
 import com.dongbang.organization.presentation.dto.response.JoinOrganizationResponse;
+import com.dongbang.auth.infrastructure.token.TokenHashService;
 import com.dongbang.user.application.facade.UserAccountFacade;
 import com.dongbang.user.application.facade.UserAccountSummary;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,7 @@ public class OrganizationCommandService {
     private final MembershipRepository membershipRepository;
     private final InvitationRepository invitationRepository;
     private final UserAccountFacade userAccountFacade;
+    private final TokenHashService tokenHashService;
 
     public CreateOrganizationResponse createOrganization(Long userId, CreateOrganizationRequest request) {
         if (organizationRepository.existsBySlug(request.slug())) {
@@ -81,7 +83,7 @@ public class OrganizationCommandService {
 
         Invitation invitation = Invitation.builder()
                 .organization(organization)
-                .tokenHash(token)
+                .tokenHash(tokenHashService.hash(token))
                 .expiresAt(expiresAt)
                 .build();
         invitationRepository.save(invitation);
@@ -90,7 +92,7 @@ public class OrganizationCommandService {
     }
 
     public JoinOrganizationResponse acceptInvitation(Long userId, String token) {
-        Invitation invitation = invitationRepository.findByTokenHash(token)
+        Invitation invitation = invitationRepository.findByTokenHash(tokenHashService.hash(token))
                 .orElseThrow(() -> new GeneralException(OrganizationErrorCode.INVALID_INVITATION_TOKEN));
 
         if (invitation.isExpired()) {
@@ -126,7 +128,13 @@ public class OrganizationCommandService {
 
         Membership target = membershipRepository.findById(targetMemberId)
                 .filter(m -> m.getOrganization().getId().equals(organizationId))
+                .filter(m -> m.getStatus() == MembershipStatus.ACTIVE)
                 .orElseThrow(() -> new GeneralException(OrganizationErrorCode.MEMBER_NOT_FOUND));
+
+        if (request.role() == MembershipRole.OWNER) {
+            throw new GeneralException(OrganizationErrorCode.INVALID_DELEGATION_TARGET,
+                    "대표 권한은 대표 위임으로만 변경할 수 있습니다.");
+        }
 
         target.updateRole(request.role());
     }
@@ -136,6 +144,7 @@ public class OrganizationCommandService {
 
         Membership target = membershipRepository.findById(targetMemberId)
                 .filter(m -> m.getOrganization().getId().equals(organizationId))
+                .filter(m -> m.getStatus() == MembershipStatus.ACTIVE)
                 .orElseThrow(() -> new GeneralException(OrganizationErrorCode.MEMBER_NOT_FOUND));
 
         if (target.getRole().isOwner()) {
@@ -150,6 +159,7 @@ public class OrganizationCommandService {
 
         Membership target = membershipRepository.findById(request.targetMemberId())
                 .filter(m -> m.getOrganization().getId().equals(organizationId))
+                .filter(m -> m.getStatus() == MembershipStatus.ACTIVE)
                 .orElseThrow(() -> new GeneralException(OrganizationErrorCode.MEMBER_NOT_FOUND));
 
         if (target.getRole() != MembershipRole.ADMIN) {
