@@ -9,5 +9,7 @@ public interface UserRepository {
     Optional<User> findById(Long id);
     boolean existsByEmail(String email);
     boolean existsByStudentNumber(String studentNumber);
+    boolean existsByEmailAndIdNot(String email, Long id);
+    boolean existsByStudentNumberAndIdNot(String studentNumber, Long id);
     void flush();
 }

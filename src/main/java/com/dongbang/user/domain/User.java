@@ -75,6 +75,21 @@ public class User extends BaseTimeEntity {
         this.lastLoginAt = loggedInAt;
     }
 
+    public void updateProfile(String name, String studentNumber, String department, String email) {
+        if (name != null) {
+            this.name = name;
+        }
+        if (studentNumber != null) {
+            this.studentNumber = studentNumber;
+        }
+        if (department != null) {
+            this.department = department;
+        }
+        if (email != null) {
+            this.email = email;
+        }
+    }
+
     public boolean requiresOnboarding() {
         return status == UserStatus.PENDING_ONBOARDING;
     }
