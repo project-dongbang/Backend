@@ -1,6 +1,27 @@
 name: dongbang-local
 
 services:
+  ocr:
+    build: ./receipt-ocr
+    profiles: ["app"]
+    expose:
+      - "8000"
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    restart: unless-stopped
+    volumes:
+      - ./receipt-ocr/app.py:/app/app.py
+      - ocr-model-data:/root/.paddlex
+    mem_limit: 768m
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 120s
+
   db:
     image: postgres:17-alpine
     environment:
@@ -25,10 +46,22 @@ services:
       DB_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-dongbang}
       DB_USERNAME: ${POSTGRES_USER:-dongbang}
       DB_PASSWORD: ${POSTGRES_PASSWORD:?Copy .env.example to .env before starting}
+      AWS_S3_ENABLED: ${AWS_S3_ENABLED:-false}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-}
+      AWS_REGION: ${AWS_REGION:-ap-northeast-2}
+      AWS_S3_ENDPOINT: ${AWS_S3_ENDPOINT:-}
+      AWS_S3_CUSTOM_DOMAIN: ${AWS_S3_CUSTOM_DOMAIN:-}
+      AWS_S3_URL_TTL: ${AWS_S3_URL_TTL:-PT15M}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      # Docker 네트워크에서는 localhost가 API 컨테이너 자신을 가리킨다.
+      RECEIPT_OCR_URL: http://ocr:8000
     ports:
       - "127.0.0.1:8080:8080"
     depends_on:
       db:
+        condition: service_healthy
+      ocr:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/actuator/health/readiness"]
@@ -39,3 +72,4 @@ services:
 
 volumes:
   postgres-data:
+  ocr-model-data:
