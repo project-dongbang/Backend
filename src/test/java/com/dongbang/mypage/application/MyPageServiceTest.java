@@ -14,12 +14,15 @@ import com.dongbang.organization.domain.repository.MembershipRepository;
 import com.dongbang.organization.domain.repository.OrganizationRepository;
 import com.dongbang.user.domain.User;
 import com.dongbang.user.domain.repository.UserRepository;
+import com.dongbang.photo.infrastructure.storage.FileStorageService;
+import com.dongbang.photo.infrastructure.storage.FileStorageResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.springframework.mock.web.MockMultipartFile;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
@@ -38,6 +41,7 @@ class MyPageServiceTest {
     @Mock private OAuthAccountRepository oauthAccountRepository;
     @Mock private OrganizationRepository organizationRepository;
     @Mock private MembershipRepository membershipRepository;
+    @Mock private FileStorageService fileStorageService;
 
     @InjectMocks private MyPageService myPageService;
 
@@ -146,5 +150,38 @@ class MyPageServiceTest {
                 .isInstanceOf(GeneralException.class)
                 .satisfies(error -> assertThat(((GeneralException) error).getErrorCode().getCode())
                         .isEqualTo("USER_409_002"));
+    }
+
+    @Test
+    @DisplayName("프로필 이미지를 새 파일로 교체하고 이전 객체를 정리한다")
+    void updateProfileImage() {
+        user.updateProfileImage("users/1/profile-images/old.png");
+        byte[] png = new byte[]{(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
+        MockMultipartFile image = new MockMultipartFile("image", "new.png", "image/png", png);
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(fileStorageService.storeForUser(image, 1L, "profile-images"))
+                .willReturn(new FileStorageResult("users/1/profile-images/new.png", "new.png", "image/png", png.length, "checksum"));
+        given(fileStorageService.getFileUrl("users/1/profile-images/new.png")).willReturn("https://cdn.example/new.png");
+
+        var response = myPageService.updateProfileImage(1L, image);
+
+        assertThat(response.profileImageUrl()).isEqualTo("https://cdn.example/new.png");
+        assertThat(user.getProfileImageStorageKey()).isEqualTo("users/1/profile-images/new.png");
+        verify(userRepository).flush();
+        verify(fileStorageService).delete("users/1/profile-images/old.png");
+    }
+
+    @Test
+    @DisplayName("기본 이미지 전환은 커스텀 이미지 참조와 저장 객체를 정리한다")
+    void useDefaultProfileImage() {
+        user.updateProfileImage("users/1/profile-images/profile.png");
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+
+        var response = myPageService.useDefaultProfileImage(1L);
+
+        assertThat(response.profileImageUrl()).isNull();
+        assertThat(user.getProfileImageStorageKey()).isNull();
+        verify(userRepository).flush();
+        verify(fileStorageService).delete("users/1/profile-images/profile.png");
     }
 }
