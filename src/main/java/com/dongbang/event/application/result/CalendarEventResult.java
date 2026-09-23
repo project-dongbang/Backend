@@ -6,6 +6,7 @@ import java.time.Instant;
 public record CalendarEventResult(
         Long eventId,
         EventType type,
+        com.dongbang.event.domain.EventStatus status,
         String title,
         Instant startsAt,
         Instant endsAt,

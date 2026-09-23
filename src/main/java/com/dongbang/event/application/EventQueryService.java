@@ -58,7 +58,7 @@ public class EventQueryService {
         boolean isEvent = event.getType() == EventType.EVENT;
         String registrationStatus = isEvent ? registrationStatus(event, activity, clock.instant()) : null;
         return new EventDetailResult(
-                event.getId(), event.getOrganizationId(), event.getType(), event.getTitle(),
+                event.getId(), event.getOrganizationId(), event.getType(), event.getStatus(), event.getTitle(),
                 event.getStartsAt(), event.getEndsAt(), event.getLocation(), event.getDescription(),
                 event.getCapacity(), event.getRegistrationDeadline(), registrationStatus,
                 isEvent ? activity.participantCount() : null,
@@ -73,7 +73,7 @@ public class EventQueryService {
     private CalendarEventResult toCalendar(Event event, EventActivity activity, Instant now) {
         boolean isEvent = event.getType() == EventType.EVENT;
         return new CalendarEventResult(
-                event.getId(), event.getType(), event.getTitle(), event.getStartsAt(), event.getEndsAt(),
+                event.getId(), event.getType(), event.getStatus(), event.getTitle(), event.getStartsAt(), event.getEndsAt(),
                 event.getLocation(), isEvent ? registrationStatus(event, activity, now) : null,
                 event.getCapacity(), isEvent ? activity.participantCount() : null,
                 isEvent ? activity.participating() : null);

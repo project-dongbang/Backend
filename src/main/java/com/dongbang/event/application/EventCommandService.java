@@ -47,6 +47,9 @@ public class EventCommandService {
             throw new GeneralException(GeneralErrorCode.VALIDATION_ERROR);
         }
         Event event = findForUpdate(organizationId, eventId);
+        if (event.getStatus() == com.dongbang.event.domain.EventStatus.CANCELED) {
+            throw new GeneralException(EventErrorCode.EVENT_CANCELED);
+        }
         EventActivity activity = activityPort.getActivity(organizationId, eventId, userId);
         EventDetails next = request.merge(event);
         // 현재 참가자 수 미만으로 정원 축소 불가

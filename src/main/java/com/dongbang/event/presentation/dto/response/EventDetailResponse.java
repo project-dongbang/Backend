@@ -13,6 +13,7 @@ public record EventDetailResponse(
         Long eventId,
         Long organizationId,
         EventType type,
+        com.dongbang.event.domain.EventStatus status,
         String title,
         Instant startsAt,
         Instant endsAt,
@@ -39,6 +40,6 @@ public record EventDetailResponse(
         return fields;
     }
     public static EventDetailResponse from(EventDetailResult result) {
-        return new EventDetailResponse(result.eventId(), result.organizationId(), result.type(), result.title(), result.startsAt(), result.endsAt(), result.location(), result.description(), result.capacity(), result.registrationDeadline(), result.registrationStatus(), result.participantCount(), result.participating(), result.canApply(), result.canCancel(), result.participantVersion(), result.attendanceSessionStatus());
+        return new EventDetailResponse(result.eventId(), result.organizationId(), result.type(), result.status(), result.title(), result.startsAt(), result.endsAt(), result.location(), result.description(), result.capacity(), result.registrationDeadline(), result.registrationStatus(), result.participantCount(), result.participating(), result.canApply(), result.canCancel(), result.participantVersion(), result.attendanceSessionStatus());
     }
 }

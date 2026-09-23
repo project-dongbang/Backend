@@ -12,6 +12,7 @@ import java.time.Instant;
 public record CalendarEventResponse(
         Long eventId,
         EventType type,
+        com.dongbang.event.domain.EventStatus status,
         String title,
         Instant startsAt,
         Instant endsAt,
@@ -32,6 +33,6 @@ public record CalendarEventResponse(
         return fields;
     }
     public static CalendarEventResponse from(CalendarEventResult result) {
-        return new CalendarEventResponse(result.eventId(), result.type(), result.title(), result.startsAt(), result.endsAt(), result.location(), result.registrationStatus(), result.capacity(), result.participantCount(), result.participating());
+        return new CalendarEventResponse(result.eventId(), result.type(), result.status(), result.title(), result.startsAt(), result.endsAt(), result.location(), result.registrationStatus(), result.capacity(), result.participantCount(), result.participating());
     }
 }

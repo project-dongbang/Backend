@@ -66,6 +66,13 @@ public class Event extends BaseTimeEntity {
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
+    @Column(nullable = false)
+    private long participantVersion;
+    private Instant registrationClosedAt;
+
+    public void participantsChanged() { participantVersion++; }
+    public void closeRegistration(Instant now) { registrationClosedAt = now; }
+    public void cancel(Instant now) { status = EventStatus.CANCELED; canceledAt = now; }
     @Builder
     public Event(Long id, Long organizationId, Long createdByMembershipId,
                  EventType type, EventDetails details) {
