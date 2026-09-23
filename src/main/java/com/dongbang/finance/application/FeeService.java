@@ -35,7 +35,6 @@ public class FeeService {
     private final AuditLogRepository auditLogRepository;
     private final MembershipRepository membershipRepository;
     private final FinanceAccessService accessService;
-    private final AccountCipher accountCipher;
 
     public PageResult<FeeItemListItem> getFeeItems(Long organizationId, Long userId, int page, int size) {
         accessService.requireMember(organizationId, userId);
@@ -60,7 +59,7 @@ public class FeeService {
         validateCreateRequest(organizationId, request);
         FeeItem item = feeItemRepository.save(new FeeItem(organizationId, request.title().trim(), request.dueDate(),
                 trim(request.description()), request.paymentAccount().bankName().trim(),
-                accountCipher.encrypt(request.paymentAccount().accountNumber().trim()),
+                request.paymentAccount().accountNumber().trim(),
                 request.paymentAccount().accountHolder().trim(), actor.getId()));
 
         List<CategoryResult> categoryResults = new ArrayList<>();
@@ -90,7 +89,7 @@ public class FeeService {
         PaymentAccount account = request.paymentAccount();
         item.update(trim(request.title()), request.dueDate(), trim(request.description()),
                 account == null ? null : account.bankName().trim(),
-                account == null ? null : accountCipher.encrypt(account.accountNumber().trim()),
+                account == null ? null : account.accountNumber().trim(),
                 account == null ? null : account.accountHolder().trim(), request.descriptionPresent());
         auditLogRepository.save(new AuditLog(organizationId, actor.getId(), "UPDATE", "FEE_ITEM", item.getId(), before, snapshot(item)));
         return updated(item);
@@ -223,7 +222,7 @@ public class FeeService {
         return feeItemRepository.findByIdAndOrganizationId(feeItemId, organizationId)
                 .orElseThrow(() -> new GeneralException(FinanceErrorCode.FEE_ITEM_NOT_FOUND));
     }
-    private PaymentAccount account(FeeItem item) { return new PaymentAccount(item.getBankName(), accountCipher.decrypt(item.getEncryptedAccountNumber()), item.getAccountHolder()); }
+    private PaymentAccount account(FeeItem item) { return new PaymentAccount(item.getBankName(), item.getAccountNumber(), item.getAccountHolder()); }
     private BigDecimal total(Collection<FeeTarget> targets) { return targets.stream().map(FeeTarget::getAmountDue).reduce(BigDecimal.ZERO, BigDecimal::add); }
     private FeeItemUpdatedResult updated(FeeItem item) {
         return new FeeItemUpdatedResult(item.getId(), item.getTitle(), item.getDueDate(), item.getDescription(), account(item),

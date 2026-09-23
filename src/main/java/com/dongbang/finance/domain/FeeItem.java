@@ -20,26 +20,26 @@ public class FeeItem extends BaseTimeEntity {
     @Column(name = "due_date", nullable = false) private LocalDate dueDate;
     @Column(length = 1000) private String description;
     @Column(name = "bank_name", nullable = false, length = 50) private String bankName;
-    @Column(name = "bank_account_number", nullable = false, length = 255) private String encryptedAccountNumber;
+    @Column(name = "bank_account_number", nullable = false, length = 255) private String accountNumber;
     @Column(name = "account_holder", nullable = false, length = 100) private String accountHolder;
     @Column(name = "created_by_membership_id", nullable = false) private Long createdByMembershipId;
 
     public FeeItem(Long organizationId, String title, LocalDate dueDate, String description,
-                   String bankName, String encryptedAccountNumber, String accountHolder, Long creatorId) {
+                   String bankName, String accountNumber, String accountHolder, Long creatorId) {
         this.organizationId = organizationId; this.title = title; this.dueDate = dueDate;
         this.description = description; this.bankName = bankName;
-        this.encryptedAccountNumber = encryptedAccountNumber; this.accountHolder = accountHolder;
+        this.accountNumber = accountNumber; this.accountHolder = accountHolder;
         this.createdByMembershipId = creatorId;
     }
 
     public void update(String title, LocalDate dueDate, String description,
-                       String bankName, String encryptedAccountNumber, String accountHolder, boolean descriptionPresent) {
+                       String bankName, String accountNumber, String accountHolder, boolean descriptionPresent) {
         if (title != null) this.title = title;
         if (dueDate != null) this.dueDate = dueDate;
         if (descriptionPresent) this.description = description;
         if (bankName != null) {
             this.bankName = bankName;
-            this.encryptedAccountNumber = encryptedAccountNumber;
+            this.accountNumber = accountNumber;
             this.accountHolder = accountHolder;
         }
     }

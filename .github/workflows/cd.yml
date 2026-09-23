@@ -63,7 +63,6 @@ jobs:
         env:
           POSTGRES_PASSWORD: ci_only_password
           JWT_SECRET: ci_only_jwt_secret_that_is_at_least_256_bits_long
-          FEE_ACCOUNT_ENCRYPTION_KEY: ci_only_fee_account_key_that_is_at_least_256_bits_long
           AUTH_ALLOWED_REDIRECT_URIS: https://example.com
           AWS_S3_BUCKET: dongbang-ci-placeholder
           API_DOMAIN: api.example.com

@@ -49,8 +49,6 @@ springdoc:
       header-name: X-XSRF-TOKEN
 
 app:
-  finance:
-    account-encryption-key: ${FEE_ACCOUNT_ENCRYPTION_KEY:${JWT_SECRET:local-development-only-fee-account-key}}
   receipt-ocr:
     url: ${RECEIPT_OCR_URL:http://ocr:8000}
   storage:

@@ -10,6 +10,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class FinanceDomainTest {
     @Test
+    void feeItemStoresAndUpdatesAccountNumberAsEntered() {
+        FeeItem item = new FeeItem(1L, "정기 납부", LocalDate.of(2026, 9, 30), null,
+                "카카오뱅크", "3333-12-3456789", "동방", 7L);
+
+        assertThat(item.getAccountNumber()).isEqualTo("3333-12-3456789");
+
+        item.update(null, null, null, "국민은행", "123456-78-901234", "동방",
+                false);
+
+        assertThat(item.getAccountNumber()).isEqualTo("123456-78-901234");
+    }
+
+    @Test
     void changingFeeTargetStatusMaintainsPaidAtInvariant() {
         FeeTarget target = new FeeTarget(1L, 2L, 3L, BigDecimal.valueOf(40000));
         Instant changedAt = Instant.parse("2026-09-23T00:00:00Z");
