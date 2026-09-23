@@ -38,9 +38,18 @@ public class S3FileStorageService implements FileStorageService {
 
     @Override
     public FileStorageResult store(MultipartFile file, Long organizationId, String directory) {
+        return storeAt(file, String.format("organizations/%d/%s", organizationId, directory));
+    }
+
+    @Override
+    public FileStorageResult storeForUser(MultipartFile file, Long userId, String directory) {
+        return storeAt(file, String.format("users/%d/%s", userId, directory));
+    }
+
+    private FileStorageResult storeAt(MultipartFile file, String prefix) {
         ImageFileValidator.ValidatedImage image = ImageFileValidator.validate(file);
         String uniqueFileName = UUID.randomUUID() + image.extension();
-        String storageKey = String.format("organizations/%d/%s/%s", organizationId, directory, uniqueFileName);
+        String storageKey = prefix + "/" + uniqueFileName;
 
         try {
             PutObjectRequest putRequest = PutObjectRequest.builder()

@@ -7,6 +7,7 @@ import com.dongbang.mypage.application.MyPageService;
 import com.dongbang.mypage.presentation.dto.request.UpdateMyProfileRequest;
 import com.dongbang.mypage.presentation.dto.response.MyProfileResponse;
 import com.dongbang.mypage.presentation.dto.response.UpdateMyProfileResponse;
+import com.dongbang.mypage.presentation.dto.response.ProfileImageResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -19,6 +20,11 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.http.MediaType;
+import org.springframework.web.multipart.MultipartFile;
 
 @Validated
 @RestController
@@ -51,5 +57,22 @@ public class MyPageController {
                 GeneralSuccessCode.OK,
                 myPageService.updateMyProfile(userId, request)
         );
+    }
+
+    @PostMapping(value = "/api/v1/users/me/profile-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "프로필 이미지 등록·변경", description = "새 프로필 이미지를 등록하거나 기존 이미지를 교체합니다.")
+    public ApiResponse<ProfileImageResponse> updateProfileImage(
+            @Parameter(hidden = true) @CurrentUserId Long userId,
+            @RequestPart("image") MultipartFile image
+    ) {
+        return ApiResponse.onSuccess(GeneralSuccessCode.OK, myPageService.updateProfileImage(userId, image));
+    }
+
+    @PutMapping("/api/v1/users/me/profile-image/default")
+    @Operation(summary = "기본 프로필 이미지로 변경", description = "커스텀 프로필 이미지를 해제합니다.")
+    public ApiResponse<ProfileImageResponse> useDefaultProfileImage(
+            @Parameter(hidden = true) @CurrentUserId Long userId
+    ) {
+        return ApiResponse.onSuccess(GeneralSuccessCode.OK, myPageService.useDefaultProfileImage(userId));
     }
 }

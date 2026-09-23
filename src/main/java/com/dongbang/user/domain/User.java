@@ -41,6 +41,9 @@ public class User extends BaseTimeEntity {
     @Column(name = "profile_image_url", length = 500)
     private String profileImageUrl;
 
+    @Column(name = "profile_image_storage_key", length = 500)
+    private String profileImageStorageKey;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 30)
     private UserStatus status;
@@ -92,5 +95,15 @@ public class User extends BaseTimeEntity {
 
     public boolean requiresOnboarding() {
         return status == UserStatus.PENDING_ONBOARDING;
+    }
+
+    public void updateProfileImage(String storageKey) {
+        this.profileImageStorageKey = storageKey;
+        this.profileImageUrl = null;
+    }
+
+    public void useDefaultProfileImage() {
+        this.profileImageStorageKey = null;
+        this.profileImageUrl = null;
     }
 }

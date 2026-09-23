@@ -8,6 +8,7 @@ import com.dongbang.global.response.code.GeneralErrorCode;
 import com.dongbang.mypage.presentation.dto.request.UpdateMyProfileRequest;
 import com.dongbang.mypage.presentation.dto.response.CurrentMembershipResponse;
 import com.dongbang.mypage.presentation.dto.response.MyProfileResponse;
+import com.dongbang.mypage.presentation.dto.response.ProfileImageResponse;
 import com.dongbang.mypage.presentation.dto.response.UpdateMyProfileResponse;
 import com.dongbang.organization.domain.Membership;
 import com.dongbang.organization.domain.MembershipStatus;
@@ -17,6 +18,10 @@ import com.dongbang.organization.domain.repository.OrganizationRepository;
 import com.dongbang.user.domain.User;
 import com.dongbang.user.domain.repository.UserRepository;
 import com.dongbang.user.exception.UserErrorCode;
+import com.dongbang.photo.infrastructure.storage.FileStorageResult;
+import com.dongbang.photo.infrastructure.storage.FileStorageService;
+import com.dongbang.photo.infrastructure.storage.ImageFileValidator;
+import com.dongbang.global.response.code.FileErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -25,6 +30,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 @RequiredArgsConstructor
@@ -35,6 +43,7 @@ public class MyPageService {
     private final OAuthAccountRepository oauthAccountRepository;
     private final OrganizationRepository organizationRepository;
     private final MembershipRepository membershipRepository;
+    private final FileStorageService fileStorageService;
 
     public MyProfileResponse getMyProfile(Long userId, Long organizationId) {
         User user = findUser(userId);
@@ -54,7 +63,7 @@ public class MyPageService {
                 user.getStudentNumber(),
                 user.getDepartment(),
                 user.getEmail(),
-                user.getProfileImageUrl(),
+                resolveProfileImageUrl(user),
                 providers,
                 currentMembership
         );
@@ -92,6 +101,50 @@ public class MyPageService {
         );
     }
 
+    @Transactional
+    public ProfileImageResponse updateProfileImage(Long userId, MultipartFile image) {
+        if (image == null || image.isEmpty()) {
+            throw new GeneralException(GeneralErrorCode.VALIDATION_ERROR);
+        }
+        if (image.getSize() > 10L * 1024 * 1024) {
+            throw new GeneralException(FileErrorCode.TOO_LARGE);
+        }
+        try {
+            ImageFileValidator.validate(image);
+        } catch (GeneralException ex) {
+            throw new GeneralException(FileErrorCode.INVALID_TYPE);
+        }
+
+        User user = findUser(userId);
+        String oldStorageKey = user.getProfileImageStorageKey();
+        FileStorageResult stored = fileStorageService.storeForUser(image, userId, "profile-images");
+        try {
+            String imageUrl = fileStorageService.getFileUrl(stored.storageKey());
+            user.updateProfileImage(stored.storageKey());
+            userRepository.flush();
+            if (oldStorageKey != null && !oldStorageKey.equals(stored.storageKey())) {
+                deleteAfterCommit(oldStorageKey);
+            }
+            return new ProfileImageResponse(imageUrl);
+        } catch (RuntimeException ex) {
+            fileStorageService.delete(stored.storageKey());
+            throw ex;
+        }
+    }
+
+    @Transactional
+    public ProfileImageResponse useDefaultProfileImage(Long userId) {
+        User user = findUser(userId);
+        String oldStorageKey = user.getProfileImageStorageKey();
+        if (oldStorageKey == null && user.getProfileImageUrl() == null) {
+            return new ProfileImageResponse(null);
+        }
+        user.useDefaultProfileImage();
+        userRepository.flush();
+        deleteAfterCommit(oldStorageKey);
+        return new ProfileImageResponse(null);
+    }
+
     private CurrentMembershipResponse getCurrentMembership(Long organizationId, Long userId) {
         organizationRepository.findById(organizationId)
                 .filter(organization -> organization.getStatus() == OrganizationStatus.ACTIVE)
@@ -115,6 +168,26 @@ public class MyPageService {
     private User findUser(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new GeneralException(UserErrorCode.USER_NOT_FOUND));
+    }
+
+    private String resolveProfileImageUrl(User user) {
+        if (user.getProfileImageStorageKey() != null) {
+            return fileStorageService.getFileUrl(user.getProfileImageStorageKey());
+        }
+        return user.getProfileImageUrl();
+    }
+
+    private void deleteAfterCommit(String storageKey) {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()) {
+            fileStorageService.delete(storageKey);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                fileStorageService.delete(storageKey);
+            }
+        });
     }
 
     private String normalizeOptional(String value) {

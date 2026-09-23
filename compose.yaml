@@ -46,6 +46,7 @@ services:
       DB_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-dongbang}
       DB_USERNAME: ${POSTGRES_USER:-dongbang}
       DB_PASSWORD: ${POSTGRES_PASSWORD:?Copy .env.example to .env before starting}
+      FEE_ACCOUNT_ENCRYPTION_KEY: ${FEE_ACCOUNT_ENCRYPTION_KEY:-local-fee-account-key-change-if-shared}
       AWS_S3_ENABLED: ${AWS_S3_ENABLED:-false}
       AWS_S3_BUCKET: ${AWS_S3_BUCKET:-}
       AWS_REGION: ${AWS_REGION:-ap-northeast-2}
