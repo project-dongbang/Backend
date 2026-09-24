@@ -19,6 +19,15 @@ public class UserAccountFacade {
 
     private final UserRepository userRepository;
 
+    @Transactional(readOnly = true)
+    public java.util.Map<Long, String> getDepartments(java.util.Collection<Long> userIds) {
+        if (userIds.isEmpty()) return java.util.Map.of();
+        return userRepository.findAllByIdIn(userIds).stream()
+                .filter(user -> user.getDepartment() != null)
+                .collect(java.util.stream.Collectors.toMap(
+                        com.dongbang.user.domain.User::getId, com.dongbang.user.domain.User::getDepartment));
+    }
+
     public Long createPendingUser() {
         return userRepository.save(User.pendingOnboarding()).getId();
     }

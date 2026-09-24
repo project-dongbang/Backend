@@ -24,12 +24,19 @@ public class AuditLog {
     @Column(name = "entity_id", nullable = false) private Long entityId;
     @Column(name = "before_snapshot", columnDefinition = "TEXT") private String beforeSnapshot;
     @Column(name = "after_snapshot", columnDefinition = "TEXT") private String afterSnapshot;
+    @Column(length = 500) private String reason;
     @CreatedDate @Column(name = "created_at", nullable = false, updatable = false) private Instant createdAt;
 
     public AuditLog(Long organizationId, Long actorId, String action, String entityType, Long entityId,
                     String beforeSnapshot, String afterSnapshot) {
+        this(organizationId, actorId, action, entityType, entityId, beforeSnapshot, afterSnapshot, null);
+    }
+
+    public AuditLog(Long organizationId, Long actorId, String action, String entityType, Long entityId,
+                    String beforeSnapshot, String afterSnapshot, String reason) {
         this.organizationId = organizationId; this.actorMembershipId = actorId; this.action = action;
         this.entityType = entityType; this.entityId = entityId;
         this.beforeSnapshot = beforeSnapshot; this.afterSnapshot = afterSnapshot;
+        this.reason = reason;
     }
 }
