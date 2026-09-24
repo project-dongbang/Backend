@@ -32,4 +32,13 @@ public interface EventJpaRepository extends JpaRepository<Event, Long>, EventRep
             """)
     List<Event> findOverlapping(@Param("organizationId") Long organizationId,
                                 @Param("from") Instant from, @Param("until") Instant until);
+
+    @Override
+    @Query("""
+            select e from Event e
+            where e.organizationId = :organizationId and e.deletedAt is null
+              and e.type = com.dongbang.event.domain.EventType.EVENT
+            order by e.startsAt desc, e.id desc
+            """)
+    List<Event> findAttendanceEvents(@Param("organizationId") Long organizationId);
 }

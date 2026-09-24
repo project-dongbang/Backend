@@ -17,4 +17,7 @@ public interface EventParticipantJpaRepository extends JpaRepository<EventPartic
 
     @Query("select p from EventParticipant p where p.eventId = :eventId and p.status = 'REGISTERED' order by p.registeredAt, p.id")
     List<EventParticipant> findByEventIdOrderByRegisteredAtAscIdAsc(Long eventId);
+
+    @Query("select p from EventParticipant p where p.membershipId = :membershipId and p.status = 'REGISTERED'")
+    List<EventParticipant> findByMembershipId(Long membershipId);
 }

@@ -3,6 +3,7 @@ package com.dongbang.event.application;
 import com.dongbang.event.domain.*;
 import com.dongbang.event.domain.repository.*;
 import com.dongbang.event.exception.EventErrorCode;
+import com.dongbang.event.application.port.EventActivityPort;
 import com.dongbang.global.exception.GeneralException;
 import com.dongbang.organization.application.facade.*;
 import com.dongbang.organization.domain.*;
@@ -24,11 +25,13 @@ class EventParticipationServiceTest {
     @Mock EventAccessService access;
     @Mock MembershipAccessFacade memberships;
     @Mock com.dongbang.finance.application.facade.AuditLogFacade auditLog;
+    @Mock EventActivityPort activityPort;
     final Instant now = Instant.parse("2026-09-24T00:00:00Z");
     EventParticipationService service;
     Event event;
     @BeforeEach void setup() {
-        service = new EventParticipationService(events, participants, access, memberships, Clock.fixed(now, ZoneOffset.UTC), auditLog);
+        service = new EventParticipationService(events, participants, access, memberships,
+                Clock.fixed(now, ZoneOffset.UTC), auditLog, activityPort);
         event = Event.builder().id(10L).organizationId(1L).createdByMembershipId(2L).type(EventType.EVENT)
                 .details(new EventDetails("행사", null, "장소", now.plusSeconds(3600), now.plusSeconds(7200), 1, null)).build();
     }
@@ -62,7 +65,7 @@ class EventParticipationServiceTest {
     @Test void deadlineBoundaryIsClosed() {
         locked();
         service = new EventParticipationService(events, participants, access, memberships,
-                Clock.fixed(event.getStartsAt(), ZoneOffset.UTC), auditLog);
+                Clock.fixed(event.getStartsAt(), ZoneOffset.UTC), auditLog, activityPort);
         assertError(() -> service.apply(1L, 3L, 10L), EventErrorCode.REGISTRATION_CLOSED);
     }
     @Test void withdrawFreesSeatAndChangesVersion() {

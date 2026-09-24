@@ -56,7 +56,7 @@ public class EventCommandService {
         if (next.capacity() != null && next.capacity() < activity.participantCount()) {
             throw new GeneralException(EventErrorCode.CAPACITY_EXCEEDED);
         }
-        // TODO(policy): 출석 시작 후 시각 변경 제한 정책 최종 합의 필요
+        // 생성된 QR의 출석 기준 시각 보호
         if (activity.hasAttendanceStarted() && request.changesTime(event)) {
             throw new GeneralException(EventErrorCode.ATTENDANCE_ALREADY_STARTED);
         }
@@ -72,7 +72,7 @@ public class EventCommandService {
     public void delete(Long organizationId, Long userId, Long eventId) {
         accessService.requireStaff(organizationId, userId);
         Event event = findForUpdate(organizationId, eventId);
-        // TODO(policy): 출석 시작 후 삭제 제한 정책 최종 합의 필요
+        // 출석 기록과 행사의 연결 유지
         if (activityPort.getActivity(organizationId, eventId, userId).hasAttendanceStarted()) {
             throw new GeneralException(EventErrorCode.ATTENDANCE_ALREADY_STARTED);
         }
