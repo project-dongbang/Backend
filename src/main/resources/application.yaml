@@ -49,6 +49,8 @@ springdoc:
       header-name: X-XSRF-TOKEN
 
 app:
+  notification:
+    fee-due-reminder-cron: ${FEE_DUE_REMINDER_CRON:0 0 9 * * *}
   receipt-ocr:
     url: ${RECEIPT_OCR_URL:http://ocr:8000}
   storage:
