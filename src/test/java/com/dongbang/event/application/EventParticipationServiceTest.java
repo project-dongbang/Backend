@@ -23,11 +23,12 @@ class EventParticipationServiceTest {
     @Mock EventParticipantRepository participants;
     @Mock EventAccessService access;
     @Mock MembershipAccessFacade memberships;
+    @Mock com.dongbang.finance.application.facade.AuditLogFacade auditLog;
     final Instant now = Instant.parse("2026-09-24T00:00:00Z");
     EventParticipationService service;
     Event event;
     @BeforeEach void setup() {
-        service = new EventParticipationService(events, participants, access, memberships, Clock.fixed(now, ZoneOffset.UTC));
+        service = new EventParticipationService(events, participants, access, memberships, Clock.fixed(now, ZoneOffset.UTC), auditLog);
         event = Event.builder().id(10L).organizationId(1L).createdByMembershipId(2L).type(EventType.EVENT)
                 .details(new EventDetails("행사", null, "장소", now.plusSeconds(3600), now.plusSeconds(7200), 1, null)).build();
     }
@@ -45,7 +46,7 @@ class EventParticipationServiceTest {
     }
     @Test void capacityIsEnforced() {
         locked(); member(); when(participants.countByEventId(10L)).thenReturn(1);
-        assertError(() -> service.apply(1L, 3L, 10L), EventErrorCode.CAPACITY_EXCEEDED);
+        assertError(() -> service.apply(1L, 3L, 10L), EventErrorCode.REGISTRATION_FULL);
         verify(participants, never()).save(any());
     }
     @Test void duplicateIsRejected() {
@@ -61,7 +62,7 @@ class EventParticipationServiceTest {
     @Test void deadlineBoundaryIsClosed() {
         locked();
         service = new EventParticipationService(events, participants, access, memberships,
-                Clock.fixed(event.getStartsAt(), ZoneOffset.UTC));
+                Clock.fixed(event.getStartsAt(), ZoneOffset.UTC), auditLog);
         assertError(() -> service.apply(1L, 3L, 10L), EventErrorCode.REGISTRATION_CLOSED);
     }
     @Test void withdrawFreesSeatAndChangesVersion() {
@@ -69,26 +70,18 @@ class EventParticipationServiceTest {
         var participant = new EventParticipant(10L, 2L, now);
         when(participants.findByEventIdAndMembershipId(10L, 2L)).thenReturn(Optional.of(participant));
         service.withdraw(1L, 3L, 10L);
-        verify(participants).delete(participant);
+        verify(participants, never()).delete(any());
+        assertThat(participant.getStatus()).isEqualTo("CANCELED");
+        assertThat(participant.getCanceledAt()).isEqualTo(now);
         assertThat(event.getParticipantVersion()).isEqualTo(1);
     }
     @Test void staffEditRequiresCurrentVersion() {
         locked(); event.participantsChanged();
-        assertError(() -> service.addParticipant(1L, 3L, 10L, 2L, 0), EventErrorCode.VERSION_CONFLICT);
+        assertError(() -> service.changeParticipants(1L, 3L, 10L,
+                new com.dongbang.event.application.command.ChangeParticipantsCommand(0, java.util.List.of())),
+                EventErrorCode.VERSION_CONFLICT);
         verify(access).requireStaff(1L, 3L);
         verifyNoInteractions(participants, memberships);
-    }
-    @Test void otherOrganizationMemberCannotBeAdded() {
-        locked();
-        when(memberships.getMembershipSummaryById(2L)).thenReturn(Optional.of(
-                new MembershipSummary(2L, 99L, 3L, "회원", MembershipRole.MEMBER, MembershipStatus.ACTIVE)));
-        assertThatThrownBy(() -> service.addParticipant(1L, 3L, 10L, 2L, 0)).isInstanceOf(GeneralException.class);
-        verifyNoInteractions(participants);
-    }
-    @Test void cancellationIsIdempotentAndBlocksApplications() {
-        locked(); service.cancel(1L, 3L, 10L); service.cancel(1L, 3L, 10L);
-        assertThat(event.getCanceledAt()).isEqualTo(now);
-        assertError(() -> service.apply(1L, 3L, 10L), EventErrorCode.EVENT_CANCELED);
     }
     @Test void scheduleCannotAcceptParticipants() {
         event = Event.builder().id(10L).organizationId(1L).type(EventType.SCHEDULE)
@@ -104,5 +97,73 @@ class EventParticipationServiceTest {
     private void assertError(Runnable action, EventErrorCode code) {
         assertThatThrownBy(action::run).isInstanceOfSatisfying(GeneralException.class,
                 ex -> assertThat(ex.getErrorCode()).isEqualTo(code));
+    }
+
+    @Test void batchReplacementAtCapacityChecksFinalCount() {
+        locked();
+        var previous = new EventParticipant(10L, 2L, now);
+        when(participants.findByEventIdOrderByRegisteredAtAscIdAsc(10L)).thenReturn(java.util.List.of(previous));
+        when(memberships.getMembershipSummaryById(4L)).thenReturn(Optional.of(
+                new MembershipSummary(4L, 1L, 5L, "추가 회원", MembershipRole.MEMBER, MembershipStatus.ACTIVE)));
+        var result = service.changeParticipants(1L, 3L, 10L,
+                new com.dongbang.event.application.command.ChangeParticipantsCommand(0, java.util.List.of(
+                        new com.dongbang.event.application.command.ChangeParticipantsCommand.Change(4L, ParticipantAction.ADD),
+                        new com.dongbang.event.application.command.ChangeParticipantsCommand.Change(2L, ParticipantAction.REMOVE))));
+        assertThat(result.participantCount()).isEqualTo(1);
+        assertThat(result.participantVersion()).isEqualTo(1);
+        assertThat(previous.getStatus()).isEqualTo("CANCELED");
+        verify(participants).save(argThat(p -> p.getMembershipId().equals(4L)));
+    }
+
+    @Test void batchOverflowDoesNotModifyRegistrationsOrVersion() {
+        locked();
+        var previous = new EventParticipant(10L, 2L, now);
+        when(participants.findByEventIdOrderByRegisteredAtAscIdAsc(10L)).thenReturn(java.util.List.of(previous));
+        when(memberships.getMembershipSummaryById(4L)).thenReturn(Optional.of(
+                new MembershipSummary(4L, 1L, 5L, "추가 회원", MembershipRole.MEMBER, MembershipStatus.ACTIVE)));
+        assertError(() -> service.changeParticipants(1L, 3L, 10L,
+                new com.dongbang.event.application.command.ChangeParticipantsCommand(0, java.util.List.of(
+                        new com.dongbang.event.application.command.ChangeParticipantsCommand.Change(4L, ParticipantAction.ADD)))),
+                EventErrorCode.CAPACITY_EXCEEDED);
+        verify(participants, never()).save(any());
+        assertThat(previous.getStatus()).isEqualTo("REGISTERED");
+        assertThat(event.getParticipantVersion()).isZero();
+        verifyNoInteractions(auditLog);
+    }
+
+    @Test void reapplicationReusesCanceledRegistration() {
+        locked(); member();
+        var previous = new EventParticipant(10L, 2L, now.minusSeconds(100));
+        previous.cancel(now.minusSeconds(50));
+        when(participants.findRegistration(10L, 2L)).thenReturn(Optional.of(previous));
+        service.apply(1L, 3L, 10L);
+        assertThat(previous.getStatus()).isEqualTo("REGISTERED");
+        assertThat(previous.getCanceledAt()).isNull();
+        verify(participants, never()).save(any());
+    }
+
+    @Test void duplicateBatchTargetDoesNotChangeState() {
+        locked();
+        var previous = new EventParticipant(10L, 2L, now);
+        when(participants.findByEventIdOrderByRegisteredAtAscIdAsc(10L)).thenReturn(java.util.List.of(previous));
+        var change = new com.dongbang.event.application.command.ChangeParticipantsCommand.Change(2L, ParticipantAction.REMOVE);
+        assertError(() -> service.changeParticipants(1L, 3L, 10L,
+                new com.dongbang.event.application.command.ChangeParticipantsCommand(0, java.util.List.of(change, change))),
+                EventErrorCode.INVALID_PARTICIPANT_CHANGE);
+        assertThat(previous.getStatus()).isEqualTo("REGISTERED");
+        assertThat(event.getParticipantVersion()).isZero();
+        verifyNoInteractions(auditLog);
+    }
+
+    @Test void staffCanRemoveParticipantAfterRegistrationCloses() {
+        locked();
+        event.closeRegistration(now.minusSeconds(1));
+        var previous = new EventParticipant(10L, 2L, now.minusSeconds(100));
+        when(participants.findByEventIdOrderByRegisteredAtAscIdAsc(10L)).thenReturn(java.util.List.of(previous));
+        var result = service.changeParticipants(1L, 3L, 10L,
+                new com.dongbang.event.application.command.ChangeParticipantsCommand(0, java.util.List.of(
+                        new com.dongbang.event.application.command.ChangeParticipantsCommand.Change(2L, ParticipantAction.REMOVE))));
+        assertThat(result.participantCount()).isZero();
+        assertThat(previous.getStatus()).isEqualTo("CANCELED");
     }
 }

@@ -46,7 +46,8 @@ public record UpdateEventCommand(
 
     public boolean changesTime(Event event) {
         EventDetails next = merge(event);
-        Instant deadline = next.registrationDeadline() == null ? next.startsAt() : next.registrationDeadline();
+        Instant deadline = event.getType() == com.dongbang.event.domain.EventType.SCHEDULE ? null
+                : next.registrationDeadline() == null ? next.startsAt() : next.registrationDeadline();
         return !java.util.Objects.equals(next.startsAt(), event.getStartsAt())
                 || !java.util.Objects.equals(next.endsAt(), event.getEndsAt())
                 || !java.util.Objects.equals(deadline, event.getRegistrationDeadline());

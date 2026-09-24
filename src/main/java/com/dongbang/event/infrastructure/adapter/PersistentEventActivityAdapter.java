@@ -23,6 +23,7 @@ public class PersistentEventActivityAdapter implements EventActivityPort {
                 .orElseThrow(() -> new GeneralException(EventErrorCode.EVENT_NOT_FOUND));
         boolean participating = memberships.getMembershipSummary(organizationId, userId)
                 .map(m -> participants.findByEventIdAndMembershipId(eventId, m.membershipId()).isPresent()).orElse(false);
+        // TODO(attendance): 실제 세션 상태 조회 연동
         return new EventActivity(participants.countByEventId(eventId), participating,
                 event.getParticipantVersion(), "NOT_STARTED", event.getRegistrationClosedAt() != null);
     }

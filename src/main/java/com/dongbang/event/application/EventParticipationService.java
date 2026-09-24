@@ -1,6 +1,10 @@
 package com.dongbang.event.application;
 
 import com.dongbang.event.domain.*;
+import com.dongbang.event.application.command.ChangeParticipantsCommand;
+import com.dongbang.event.application.result.ChangeParticipantsResult;
+import com.dongbang.event.application.result.EventApplicationResult;
+import com.dongbang.finance.application.facade.AuditLogFacade;
 import com.dongbang.event.domain.repository.*;
 import com.dongbang.event.exception.EventErrorCode;
 import com.dongbang.global.exception.GeneralException;
@@ -14,6 +18,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
+import java.util.HashSet;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -24,64 +31,37 @@ public class EventParticipationService {
     private final EventAccessService access;
     private final MembershipAccessFacade memberships;
     private final Clock clock;
+    private final AuditLogFacade auditLog;
 
-    public void apply(Long organizationId, Long userId, Long eventId) {
+    public EventApplicationResult apply(Long organizationId, Long userId, Long eventId) {
         access.requireMember(organizationId, userId);
         Event event = locked(organizationId, eventId);
         requireOpen(event);
-        add(event, ownMembership(organizationId, userId));
+        Long membershipId = ownMembership(organizationId, userId);
+        add(event, membershipId, EventErrorCode.REGISTRATION_FULL);
+        audit(event, membershipId, "EVENT_APPLY", null, membershipId.toString());
+        return new EventApplicationResult(eventId, membershipId, true,
+                participants.countByEventId(eventId), event.getParticipantVersion());
     }
 
     public void withdraw(Long organizationId, Long userId, Long eventId) {
         access.requireMember(organizationId, userId);
         Event event = locked(organizationId, eventId);
         requireOpen(event);
-        remove(event, ownMembership(organizationId, userId));
-    }
-
-    public void addParticipant(Long organizationId, Long userId, Long eventId, Long membershipId, long version) {
-        access.requireStaff(organizationId, userId);
-        Event event = locked(organizationId, eventId);
-        requireEditable(event, version);
-        memberships.getMembershipSummaryById(membershipId)
-                .filter(m -> organizationId.equals(m.organizationId()) && m.status() == MembershipStatus.ACTIVE)
-                .orElseThrow(() -> new GeneralException(OrganizationErrorCode.MEMBER_REQUIRED));
-        add(event, membershipId);
-    }
-
-    public void removeParticipant(Long organizationId, Long userId, Long eventId, Long membershipId, long version) {
-        access.requireStaff(organizationId, userId);
-        Event event = locked(organizationId, eventId);
-        requireEditable(event, version);
+        Long membershipId = ownMembership(organizationId, userId);
         remove(event, membershipId);
+        audit(event, membershipId, "EVENT_WITHDRAW", membershipId.toString(), null);
     }
 
     public void closeRegistration(Long organizationId, Long userId, Long eventId) {
-        access.requireStaff(organizationId, userId);
+        Long actorId = access.requireStaff(organizationId, userId);
         Event event = locked(organizationId, eventId);
-        if (event.getRegistrationClosedAt() == null) event.closeRegistration(clock.instant());
-    }
-
-    public void cancel(Long organizationId, Long userId, Long eventId) {
-        access.requireStaff(organizationId, userId);
-        Event event = events.findForUpdate(eventId, organizationId)
-                .orElseThrow(() -> new GeneralException(EventErrorCode.EVENT_NOT_FOUND));
-        if (event.getStatus() != EventStatus.CANCELED) event.cancel(clock.instant());
-    }
-
-    @Transactional
-    public ParticipantList list(Long organizationId, Long userId, Long eventId) {
-        access.requireStaff(organizationId, userId);
-        // 같은 행사 행을 잠가 목록과 버전을 일관된 스냅샷으로 반환한다.
-        Event event = events.findForUpdate(eventId, organizationId)
-                .orElseThrow(() -> new GeneralException(EventErrorCode.EVENT_NOT_FOUND));
-        if (event.getType() != EventType.EVENT) throw new GeneralException(EventErrorCode.EVENT_ONLY);
-        var rows = participants.findByEventIdOrderByRegisteredAtAscIdAsc(eventId);
-        var names = memberships.getMembershipSummariesByIds(rows.stream().map(EventParticipant::getMembershipId).toList());
-        return new ParticipantList(event.getParticipantVersion(), rows.stream().map(p -> {
-            var member = names.get(p.getMembershipId());
-            return new ParticipantItem(p.getMembershipId(), member == null ? null : member.memberName(), p.getRegisteredAt());
-        }).toList());
+        if (event.getRegistrationClosedAt() == null) {
+            requireOpen(event);
+            event.closeRegistration(clock.instant());
+            audit(event, actorId, "EVENT_REGISTRATION_CLOSE",
+                    "\"" + event.getRegistrationDeadline() + "\"", "\"" + event.getRegistrationClosedAt() + "\"");
+        }
     }
 
     private Event locked(Long organizationId, Long eventId) {
@@ -106,24 +86,90 @@ public class EventParticipationService {
 
     private void requireEditable(Event event, long version) {
         if (event.getParticipantVersion() != version) throw new GeneralException(EventErrorCode.VERSION_CONFLICT);
-        if (!clock.instant().isBefore(event.getStartsAt())) throw new GeneralException(EventErrorCode.REGISTRATION_CLOSED);
     }
 
-    private void add(Event event, Long membershipId) {
+    private void add(Event event, Long membershipId, EventErrorCode capacityError) {
         if (participants.findByEventIdAndMembershipId(event.getId(), membershipId).isPresent())
             throw new GeneralException(EventErrorCode.ALREADY_PARTICIPATING);
         if (event.getCapacity() != null && participants.countByEventId(event.getId()) >= event.getCapacity())
-            throw new GeneralException(EventErrorCode.CAPACITY_EXCEEDED);
-        participants.save(new EventParticipant(event.getId(), membershipId, clock.instant()));
+            throw new GeneralException(capacityError);
+        register(event, membershipId);
         event.participantsChanged();
     }
 
     private void remove(Event event, Long membershipId) {
-        participants.delete(participants.findByEventIdAndMembershipId(event.getId(), membershipId)
-                .orElseThrow(() -> new GeneralException(EventErrorCode.PARTICIPANT_NOT_FOUND)));
+        participants.findByEventIdAndMembershipId(event.getId(), membershipId)
+                .orElseThrow(() -> new GeneralException(EventErrorCode.PARTICIPANT_NOT_FOUND))
+                .cancel(clock.instant());
         event.participantsChanged();
     }
 
-    public record ParticipantItem(Long membershipId, String memberName, Instant registeredAt) {}
-    public record ParticipantList(long participantVersion, List<ParticipantItem> participants) {}
+    public ChangeParticipantsResult changeParticipants(Long organizationId, Long userId, Long eventId,
+                                                       ChangeParticipantsCommand command) {
+        Long actorId = access.requireStaff(organizationId, userId);
+        Event event = locked(organizationId, eventId);
+        requireEditable(event, command.participantVersion());
+        if (command.changes() == null || command.changes().isEmpty()) {
+            throw new GeneralException(EventErrorCode.INVALID_PARTICIPANT_CHANGE);
+        }
+        var current = participants.findByEventIdOrderByRegisteredAtAscIdAsc(eventId).stream()
+                .collect(Collectors.toMap(EventParticipant::getMembershipId, p -> p));
+        var seen = new HashSet<Long>();
+        int added = 0;
+        int removed = 0;
+        // 모든 대상과 최종 정원 검증 후 일괄 반영
+        for (var change : command.changes()) {
+            if (change == null || change.membershipId() == null || change.membershipId() <= 0
+                    || change.action() == null || !seen.add(change.membershipId())) {
+                throw new GeneralException(EventErrorCode.INVALID_PARTICIPANT_CHANGE);
+            }
+            if (change.action() == ParticipantAction.ADD) {
+                memberships.getMembershipSummaryById(change.membershipId())
+                        .filter(m -> organizationId.equals(m.organizationId()) && m.status() == MembershipStatus.ACTIVE)
+                        .orElseThrow(() -> new GeneralException(EventErrorCode.INVALID_PARTICIPANT_CHANGE));
+                if (current.containsKey(change.membershipId())) {
+                    throw new GeneralException(EventErrorCode.VERSION_CONFLICT);
+                }
+                added++;
+            } else {
+                if (!current.containsKey(change.membershipId())) {
+                    throw new GeneralException(EventErrorCode.VERSION_CONFLICT);
+                }
+                removed++;
+            }
+        }
+        int count = current.size() + added - removed;
+        if (event.getCapacity() != null && count > event.getCapacity()) {
+            throw new GeneralException(EventErrorCode.CAPACITY_EXCEEDED);
+        }
+        for (var change : command.changes()) {
+            if (change.action() == ParticipantAction.ADD) {
+                register(event, change.membershipId());
+            } else {
+                current.get(change.membershipId()).cancel(clock.instant());
+            }
+        }
+        event.participantsChanged();
+        var after = new TreeSet<>(current.keySet());
+        command.changes().forEach(c -> {
+            if (c.action() == ParticipantAction.ADD) after.add(c.membershipId());
+            else after.remove(c.membershipId());
+        });
+        audit(event, actorId, "EVENT_PARTICIPANTS_CHANGE",
+                new TreeSet<>(current.keySet()).toString(), after.toString());
+        // TODO(attendance): 세션 생성 이후 참가자 변경 시 출석 대상 동기화
+        return new ChangeParticipantsResult(eventId, added, removed, count,
+                event.getCapacity(), event.getParticipantVersion());
+    }
+
+    private void register(Event event, Long membershipId) {
+        var existing = participants.findRegistration(event.getId(), membershipId);
+        if (existing.isPresent()) existing.get().register(clock.instant());
+        else participants.save(new EventParticipant(event.getId(), membershipId, clock.instant()));
+    }
+
+    private void audit(Event event, Long actorId, String action, String before, String after) {
+        auditLog.record(event.getOrganizationId(), actorId, action, "EVENT", event.getId(), before, after);
+    }
+
 }

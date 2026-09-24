@@ -60,8 +60,9 @@ public class EventCommandService {
         if (activity.hasAttendanceStarted() && request.changesTime(event)) {
             throw new GeneralException(EventErrorCode.ATTENDANCE_ALREADY_STARTED);
         }
+        var deadline = next.registrationDeadline() == null ? next.startsAt() : next.registrationDeadline();
         if (activity.registrationClosedEarly()
-                && !Objects.equals(next.registrationDeadline(), event.getRegistrationDeadline())) {
+                && !Objects.equals(deadline, event.getRegistrationDeadline())) {
             throw new GeneralException(GeneralErrorCode.VALIDATION_ERROR,
                     "조기 마감된 신청의 마감 시각은 변경할 수 없습니다.");
         }

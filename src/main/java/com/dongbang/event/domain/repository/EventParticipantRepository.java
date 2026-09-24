@@ -7,5 +7,6 @@ public interface EventParticipantRepository {
     void delete(EventParticipant participant);
     int countByEventId(Long eventId);
     Optional<EventParticipant> findByEventIdAndMembershipId(Long eventId, Long membershipId);
+    Optional<EventParticipant> findRegistration(Long eventId, Long membershipId);
     List<EventParticipant> findByEventIdOrderByRegisteredAtAscIdAsc(Long eventId);
 }
