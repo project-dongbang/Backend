@@ -7,14 +7,12 @@ import com.dongbang.finance.domain.repository.FeeItemRepository;
 import com.dongbang.finance.domain.repository.FeeTargetRepository;
 import com.dongbang.notification.domain.Notification;
 import com.dongbang.notification.domain.NotificationType;
-import com.dongbang.notification.domain.repository.NotificationRepository;
 import com.dongbang.organization.domain.Membership;
 import com.dongbang.organization.domain.MembershipRole;
 import com.dongbang.organization.domain.Organization;
 import com.dongbang.organization.domain.repository.MembershipRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -26,7 +24,6 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -35,7 +32,7 @@ class FeeDueReminderServiceTest {
     @Mock private FeeItemRepository feeItemRepository;
     @Mock private FeeTargetRepository feeTargetRepository;
     @Mock private MembershipRepository membershipRepository;
-    @Mock private NotificationRepository notificationRepository;
+    @Mock private NotificationCreator notificationCreator;
 
     @Test
     void createsReminderOnlyForActiveLinkedUnpaidTargets() {
@@ -59,16 +56,15 @@ class FeeDueReminderServiceTest {
                 .willReturn(List.of(linkedTarget, unlinkedTarget));
         given(membershipRepository.findAllByIdIn(Set.of(41L, 42L)))
                 .willReturn(List.of(linkedMember, unlinkedMember));
-        given(notificationRepository.findAllByDeduplicationKeyIn(List.of(
-                "FEE_DUE_REMINDER:21:2026-09-25:10"))).willReturn(List.of());
+        given(notificationCreator.saveNew(org.mockito.ArgumentMatchers.anyList())).willReturn(1);
 
         FeeDueReminderService service = new FeeDueReminderService(
-                feeItemRepository, feeTargetRepository, membershipRepository, notificationRepository);
+                feeItemRepository, feeTargetRepository, membershipRepository, notificationCreator);
         int createdCount = service.createRemindersFor(dueDate);
 
         @SuppressWarnings("unchecked")
-        ArgumentCaptor<List<Notification>> captor = ArgumentCaptor.forClass(List.class);
-        verify(notificationRepository).saveAll(captor.capture());
+        org.mockito.ArgumentCaptor<List<Notification>> captor = org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(notificationCreator).saveNew(captor.capture());
         assertThat(createdCount).isEqualTo(1);
         assertThat(captor.getValue()).singleElement().satisfies(notification -> {
             assertThat(notification.getUserId()).isEqualTo(10L);
@@ -90,22 +86,16 @@ class FeeDueReminderServiceTest {
         Membership member = Membership.builder()
                 .id(41L).organization(organization).userId(10L).memberName("김동방")
                 .studentNumber("20260001").role(MembershipRole.MEMBER).build();
-        Notification existing = Notification.create(
-                1L, 10L, NotificationType.FEE_DUE_REMINDER, "제목", "내용",
-                com.dongbang.notification.domain.NotificationReferenceType.FEE_ITEM, 21L,
-                "FEE_DUE_REMINDER:21:2026-09-25:10");
-
         given(feeItemRepository.findAllByDueDate(dueDate)).willReturn(List.of(feeItem));
         given(feeTargetRepository.findAllByFeeItemIdInAndStatus(Set.of(21L), FeeTargetStatus.UNPAID))
                 .willReturn(List.of(target));
         given(membershipRepository.findAllByIdIn(Set.of(41L))).willReturn(List.of(member));
-        given(notificationRepository.findAllByDeduplicationKeyIn(List.of(
-                "FEE_DUE_REMINDER:21:2026-09-25:10"))).willReturn(List.of(existing));
+        given(notificationCreator.saveNew(org.mockito.ArgumentMatchers.anyList())).willReturn(0);
 
         FeeDueReminderService service = new FeeDueReminderService(
-                feeItemRepository, feeTargetRepository, membershipRepository, notificationRepository);
+                feeItemRepository, feeTargetRepository, membershipRepository, notificationCreator);
 
         assertThat(service.createRemindersFor(dueDate)).isZero();
-        verify(notificationRepository, never()).saveAll(org.mockito.ArgumentMatchers.anyList());
+        verify(notificationCreator).saveNew(org.mockito.ArgumentMatchers.anyList());
     }
 }

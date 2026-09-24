@@ -14,6 +14,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -31,6 +33,7 @@ class EventServiceTest {
     @Mock EventRepository repository;
     @Mock EventAccessService access;
     @Mock EventActivityPort activityPort;
+    @Mock ApplicationEventPublisher eventPublisher;
 
     private final Instant now = Instant.parse("2026-09-01T00:00:00Z");
     private final Clock clock = Clock.fixed(now, ZoneOffset.UTC);
@@ -40,7 +43,7 @@ class EventServiceTest {
 
     @BeforeEach
     void setUp() {
-        commands = new EventCommandService(repository, access, activityPort, clock);
+        commands = new EventCommandService(repository, access, activityPort, clock, eventPublisher);
         queries = new EventQueryService(repository, access, activityPort, clock);
         event = Event.builder().id(101L).organizationId(1L).createdByMembershipId(9L)
                 .type(EventType.EVENT)
@@ -79,6 +82,29 @@ class EventServiceTest {
         commands.create(1L, 77L, new CreateEventCommand(EventType.EVENT,
                 new EventDetails("행사", null, "장소", now.plusSeconds(1), now.plusSeconds(2), null, null)));
         verify(repository).save(any());
+    }
+
+    @Test
+    void scheduleCreationPublishesNotificationEvent() {
+        when(access.requireStaff(1L, 77L)).thenReturn(9L);
+        when(repository.save(any())).thenAnswer(invocation -> {
+            Event saved = invocation.getArgument(0);
+            ReflectionTestUtils.setField(saved, "id", 101L);
+            return saved;
+        });
+
+        commands.create(1L, 77L, new CreateEventCommand(EventType.SCHEDULE,
+                new EventDetails("운영진 회의", null, "동아리방",
+                        now.plusSeconds(3600), now.plusSeconds(7200), null, null)));
+
+        org.mockito.ArgumentCaptor<Object> captor = org.mockito.ArgumentCaptor.forClass(Object.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue())
+                .isInstanceOfSatisfying(com.dongbang.event.application.event.ScheduleCreatedEvent.class, created -> {
+                    assertThat(created.organizationId()).isEqualTo(1L);
+                    assertThat(created.eventId()).isEqualTo(101L);
+                    assertThat(created.title()).isEqualTo("운영진 회의");
+                });
     }
 
     @Test

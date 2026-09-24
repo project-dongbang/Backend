@@ -4,8 +4,10 @@ import com.dongbang.global.response.ApiResponse;
 import com.dongbang.global.response.code.GeneralSuccessCode;
 import com.dongbang.global.security.CurrentUserId;
 import com.dongbang.mypage.application.MyPageService;
+import com.dongbang.mypage.application.MyPageActivityService;
 import com.dongbang.mypage.presentation.dto.request.UpdateMyProfileRequest;
 import com.dongbang.mypage.presentation.dto.response.MyProfileResponse;
+import com.dongbang.mypage.presentation.dto.response.MyActivitiesResponse;
 import com.dongbang.mypage.presentation.dto.response.UpdateMyProfileResponse;
 import com.dongbang.mypage.presentation.dto.response.ProfileImageResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,6 +35,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class MyPageController {
 
     private final MyPageService myPageService;
+    private final MyPageActivityService myPageActivityService;
 
     @GetMapping("/api/v1/users/me")
     @Operation(summary = "내 프로필 조회", description = "내 기본 프로필과 OAuth 연결 정보, 선택 동아리의 회원 정보를 조회합니다.")
@@ -44,6 +47,19 @@ public class MyPageController {
         return ApiResponse.onSuccess(
                 GeneralSuccessCode.OK,
                 myPageService.getMyProfile(userId, organizationId)
+        );
+    }
+
+    @GetMapping("/api/v1/users/me/activities")
+    @Operation(summary = "내 활동 내역 조회", description = "선택 동아리의 행사 신청 수, 납부 상태와 신청 행사 목록을 조회합니다.")
+    public ApiResponse<MyActivitiesResponse> getMyActivities(
+            @Parameter(hidden = true) @CurrentUserId Long userId,
+            @Parameter(description = "선택 동아리 ID", required = true)
+            @RequestParam @Positive Long organizationId
+    ) {
+        return ApiResponse.onSuccess(
+                GeneralSuccessCode.OK,
+                myPageActivityService.getMyActivities(userId, organizationId)
         );
     }
 
