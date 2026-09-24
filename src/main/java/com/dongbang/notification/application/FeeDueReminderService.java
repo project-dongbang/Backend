@@ -8,7 +8,6 @@ import com.dongbang.finance.domain.repository.FeeTargetRepository;
 import com.dongbang.notification.domain.Notification;
 import com.dongbang.notification.domain.NotificationReferenceType;
 import com.dongbang.notification.domain.NotificationType;
-import com.dongbang.notification.domain.repository.NotificationRepository;
 import com.dongbang.organization.domain.Membership;
 import com.dongbang.organization.domain.MembershipStatus;
 import com.dongbang.organization.domain.repository.MembershipRepository;
@@ -20,10 +19,8 @@ import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -35,7 +32,7 @@ public class FeeDueReminderService {
     private final FeeItemRepository feeItemRepository;
     private final FeeTargetRepository feeTargetRepository;
     private final MembershipRepository membershipRepository;
-    private final NotificationRepository notificationRepository;
+    private final NotificationCreator notificationCreator;
 
     @Transactional
     public int createRemindersFor(LocalDate dueDate) {
@@ -75,26 +72,7 @@ public class FeeDueReminderService {
             ));
         }
 
-        Set<String> existingKeys = existingKeys(candidates.stream()
-                .map(Notification::getDeduplicationKey)
-                .toList());
-        List<Notification> newNotifications = candidates.stream()
-                .filter(notification -> !existingKeys.contains(notification.getDeduplicationKey()))
-                .toList();
-        if (newNotifications.isEmpty()) {
-            return 0;
-        }
-        notificationRepository.saveAll(newNotifications);
-        return newNotifications.size();
-    }
-
-    private Set<String> existingKeys(Collection<String> candidateKeys) {
-        if (candidateKeys.isEmpty()) {
-            return Set.of();
-        }
-        return notificationRepository.findAllByDeduplicationKeyIn(candidateKeys).stream()
-                .map(Notification::getDeduplicationKey)
-                .collect(Collectors.toSet());
+        return notificationCreator.saveNew(candidates);
     }
 
     private String message(FeeItem item, BigDecimal amountDue) {

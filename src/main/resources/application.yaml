@@ -51,6 +51,7 @@ springdoc:
 app:
   notification:
     fee-due-reminder-cron: ${FEE_DUE_REMINDER_CRON:0 0 9 * * *}
+    event-day-before-reminder-cron: ${EVENT_DAY_BEFORE_REMINDER_CRON:0 0 9 * * *}
   receipt-ocr:
     url: ${RECEIPT_OCR_URL:http://ocr:8000}
   storage:
