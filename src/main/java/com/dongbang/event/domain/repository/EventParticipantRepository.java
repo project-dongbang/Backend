@@ -9,4 +9,5 @@ public interface EventParticipantRepository {
     Optional<EventParticipant> findByEventIdAndMembershipId(Long eventId, Long membershipId);
     Optional<EventParticipant> findRegistration(Long eventId, Long membershipId);
     List<EventParticipant> findByEventIdOrderByRegisteredAtAscIdAsc(Long eventId);
+    List<EventParticipant> findByMembershipId(Long membershipId);
 }

@@ -11,4 +11,5 @@ public interface EventRepository {
     Optional<Event> findByIdAndOrganizationIdAndDeletedAtIsNull(Long id, Long organizationId);
     Optional<Event> findForUpdate(Long id, Long organizationId);
     List<Event> findOverlapping(Long organizationId, Instant from, Instant until);
+    List<Event> findAttendanceEvents(Long organizationId);
 }
