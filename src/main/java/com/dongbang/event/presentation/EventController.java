@@ -32,7 +32,7 @@ public class EventController {
 
     // 1. 월별 캘린더 조회
     @GetMapping("/calendar")
-    @Operation(summary = "월별 캘린더 조회", description = "해당 월과 겹치는 동아리 일정·행사를 조회합니다.")
+    @Operation(summary = "월별 캘린더 조회", description = "해당 월의 일정·행사와 회비 납부 마감일을 조회합니다.")
     public ApiResponse<CalendarResponse> calendar(
             @Parameter(hidden = true) @CurrentUserId Long userId,
             @PathVariable @Positive Long organizationId,
