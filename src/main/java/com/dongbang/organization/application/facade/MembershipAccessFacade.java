@@ -73,4 +73,11 @@ public class MembershipAccessFacade {
     public long getActiveMemberCount(Long organizationId) {
         return membershipRepository.findAllByOrganizationIdAndStatus(organizationId, MembershipStatus.ACTIVE).size();
     }
+
+    public java.util.List<ParticipantMemberSummary> getParticipantMembers(Long organizationId) {
+        return membershipRepository.findAllByOrganizationId(organizationId).stream()
+                .map(m -> new ParticipantMemberSummary(m.getId(), m.getUserId(), m.getMemberName(),
+                        m.getStudentNumber(), m.getStatus() == MembershipStatus.ACTIVE))
+                .toList();
+    }
 }
