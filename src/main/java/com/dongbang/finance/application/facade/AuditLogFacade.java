@@ -16,4 +16,10 @@ public class AuditLogFacade {
                        Long entityId, String before, String after) {
         auditLogRepository.save(new AuditLog(organizationId, actorId, action, entityType, entityId, before, after));
     }
+
+    public void record(Long organizationId, Long actorId, String action, String entityType,
+                       Long entityId, String before, String after, String reason) {
+        auditLogRepository.save(new AuditLog(
+                organizationId, actorId, action, entityType, entityId, before, after, reason));
+    }
 }

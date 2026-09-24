@@ -2,6 +2,7 @@ package com.dongbang.event.application;
 
 import com.dongbang.event.domain.*;
 import com.dongbang.event.application.command.ChangeParticipantsCommand;
+import com.dongbang.event.application.port.EventActivityPort;
 import com.dongbang.event.application.result.ChangeParticipantsResult;
 import com.dongbang.event.application.result.EventApplicationResult;
 import com.dongbang.finance.application.facade.AuditLogFacade;
@@ -32,6 +33,7 @@ public class EventParticipationService {
     private final MembershipAccessFacade memberships;
     private final Clock clock;
     private final AuditLogFacade auditLog;
+    private final EventActivityPort activityPort;
 
     public EventApplicationResult apply(Long organizationId, Long userId, Long eventId) {
         access.requireMember(organizationId, userId);
@@ -39,6 +41,7 @@ public class EventParticipationService {
         requireOpen(event);
         Long membershipId = ownMembership(organizationId, userId);
         add(event, membershipId, EventErrorCode.REGISTRATION_FULL);
+        activityPort.synchronizeParticipants(eventId, List.of(membershipId), List.of());
         audit(event, membershipId, "EVENT_APPLY", null, membershipId.toString());
         return new EventApplicationResult(eventId, membershipId, true,
                 participants.countByEventId(eventId), event.getParticipantVersion());
@@ -50,6 +53,7 @@ public class EventParticipationService {
         requireOpen(event);
         Long membershipId = ownMembership(organizationId, userId);
         remove(event, membershipId);
+        activityPort.synchronizeParticipants(eventId, List.of(), List.of(membershipId));
         audit(event, membershipId, "EVENT_WITHDRAW", membershipId.toString(), null);
     }
 
@@ -157,7 +161,11 @@ public class EventParticipationService {
         });
         audit(event, actorId, "EVENT_PARTICIPANTS_CHANGE",
                 new TreeSet<>(current.keySet()).toString(), after.toString());
-        // TODO(attendance): 세션 생성 이후 참가자 변경 시 출석 대상 동기화
+        var addedIds = command.changes().stream().filter(c -> c.action() == ParticipantAction.ADD)
+                .map(c -> c.membershipId()).toList();
+        var removedIds = command.changes().stream().filter(c -> c.action() == ParticipantAction.REMOVE)
+                .map(c -> c.membershipId()).toList();
+        activityPort.synchronizeParticipants(eventId, addedIds, removedIds);
         return new ChangeParticipantsResult(eventId, added, removed, count,
                 event.getCapacity(), event.getParticipantVersion());
     }

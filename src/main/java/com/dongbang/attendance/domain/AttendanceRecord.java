@@ -24,13 +24,18 @@ public class AttendanceRecord extends BaseTimeEntity {
     @Column(length = 20) private AttendanceSource source;
     @Column(length = 500) private String reason;
     @Column(name = "checked_at") private Instant checkedAt;
+    @Column(name = "target_active", nullable = false) private boolean targetActive;
     @Version @Column(nullable = false) private long version;
 
     public AttendanceRecord(Long sessionId, Long membershipId) {
         this.attendanceSessionId = sessionId;
         this.membershipId = membershipId;
         this.status = AttendanceStatus.ABSENT;
+        this.targetActive = true;
     }
+
+    public void activate() { targetActive = true; }
+    public void deactivate() { targetActive = false; }
 
     public void checkIn(Instant now) {
         status = AttendanceStatus.PRESENT;
