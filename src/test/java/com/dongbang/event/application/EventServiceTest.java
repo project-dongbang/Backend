@@ -9,6 +9,7 @@ import com.dongbang.event.application.command.CreateEventCommand;
 import com.dongbang.event.application.command.UpdateEventCommand;
 import java.util.Set;
 import com.dongbang.global.exception.GeneralException;
+import com.dongbang.finance.application.facade.FeeCalendarFacade;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,6 +34,7 @@ class EventServiceTest {
     @Mock EventRepository repository;
     @Mock EventAccessService access;
     @Mock EventActivityPort activityPort;
+    @Mock FeeCalendarFacade feeCalendarFacade;
     @Mock ApplicationEventPublisher eventPublisher;
 
     private final Instant now = Instant.parse("2026-09-01T00:00:00Z");
@@ -44,7 +46,7 @@ class EventServiceTest {
     @BeforeEach
     void setUp() {
         commands = new EventCommandService(repository, access, activityPort, clock, eventPublisher);
-        queries = new EventQueryService(repository, access, activityPort, clock);
+        queries = new EventQueryService(repository, access, activityPort, feeCalendarFacade, clock);
         event = Event.builder().id(101L).organizationId(1L).createdByMembershipId(9L)
                 .type(EventType.EVENT)
                 .details(new EventDetails("행사", "설명", "동아리방",
@@ -57,9 +59,33 @@ class EventServiceTest {
         Instant from = Instant.parse("2026-08-31T15:00:00Z");
         Instant until = Instant.parse("2026-09-30T15:00:00Z");
         when(repository.findOverlapping(1L, from, until)).thenReturn(List.of());
+        when(feeCalendarFacade.findDeadlines(1L, java.time.LocalDate.of(2026, 9, 1),
+                java.time.LocalDate.of(2026, 9, 30))).thenReturn(List.of());
         assertThat(queries.calendar(1L, 1L, 2026, 9).events()).isEmpty();
         verify(access).requireMember(1L, 1L);
         verify(repository).findOverlapping(1L, from, until);
+    }
+
+    @Test
+    void calendarIncludesFeeDeadlineAt2359KoreanTime() {
+        Instant from = Instant.parse("2026-08-31T15:00:00Z");
+        Instant until = Instant.parse("2026-09-30T15:00:00Z");
+        when(repository.findOverlapping(1L, from, until)).thenReturn(List.of());
+        when(feeCalendarFacade.findDeadlines(1L, java.time.LocalDate.of(2026, 9, 1),
+                java.time.LocalDate.of(2026, 9, 30))).thenReturn(List.of(
+                new FeeCalendarFacade.FeeCalendarItem(201L, "2학기 정기 납부",
+                        java.time.LocalDate.of(2026, 9, 10), "정기 납부 항목",
+                        new java.math.BigDecimal("40000"), List.of(new java.math.BigDecimal("40000")),
+                        64, 58, 6)));
+
+        var item = queries.calendar(1L, 1L, 2026, 9).events().getFirst();
+
+        assertThat(item.type()).isEqualTo(com.dongbang.event.application.result.CalendarItemType.FEE_DUE);
+        assertThat(item.feeItemId()).isEqualTo(201L);
+        assertThat(item.startsAt()).isEqualTo(Instant.parse("2026-09-10T14:59:00Z"));
+        assertThat(item.targetCount()).isEqualTo(64);
+        assertThat(item.paidCount()).isEqualTo(58);
+        assertThat(item.unpaidCount()).isEqualTo(6);
     }
 
     @Test
