@@ -2,6 +2,7 @@ package com.dongbang.attendance.application;
 
 import com.dongbang.attendance.application.dto.AttendanceResults.*;
 import com.dongbang.attendance.application.dto.ModifyAttendanceCommand;
+import com.dongbang.attendance.application.event.AttendanceStartedEvent;
 import com.dongbang.attendance.application.port.QrTokenGenerator;
 import com.dongbang.attendance.domain.*;
 import com.dongbang.attendance.exception.AttendanceErrorCode;
@@ -16,6 +17,7 @@ import com.dongbang.organization.application.facade.MembershipSummary;
 import com.dongbang.organization.application.facade.ParticipantMemberSummary;
 import com.dongbang.organization.exception.OrganizationErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,6 +40,7 @@ public class AttendanceService {
     private final QrTokenGenerator qrTokens;
     private final AuditLogFacade auditLog;
     private final Clock clock;
+    private final ApplicationEventPublisher eventPublisher;
 
     public EventList events(Long organizationId, Long userId, String keyword, LocalDate startDate,
                             LocalDate endDate, EventSort sort, int page, int size) {
@@ -82,13 +85,16 @@ public class AttendanceService {
     @Transactional
     public Started start(Long organizationId, Long userId, Long eventId) {
         Long actorId = access.requireStaff(organizationId, userId);
-        events.lockEvent(organizationId, eventId);
+        AttendanceEvent event = events.lockEvent(organizationId, eventId);
         if (sessions.findByEventId(eventId).isPresent()) throw new GeneralException(AttendanceErrorCode.ALREADY_GENERATED);
         Instant now = now();
         AttendanceSession session = sessions.save(new AttendanceSession(eventId, actorId, qrTokens.generate(), now));
-        for (Long membershipId : events.participantIds(eventId)) {
+        List<Long> participantIds = events.participantIds(eventId);
+        for (Long membershipId : participantIds) {
             records.save(new AttendanceRecord(session.getId(), membershipId));
         }
+        eventPublisher.publishEvent(new AttendanceStartedEvent(
+                organizationId, eventId, session.getId(), event.title(), now, participantIds));
         return new Started(eventId, sessionView(session, now), now);
     }
 

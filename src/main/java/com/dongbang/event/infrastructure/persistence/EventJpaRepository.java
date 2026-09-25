@@ -41,4 +41,16 @@ public interface EventJpaRepository extends JpaRepository<Event, Long>, EventRep
             order by e.startsAt desc, e.id desc
             """)
     List<Event> findAttendanceEvents(@Param("organizationId") Long organizationId);
+
+    @Override
+    @Query("""
+            select e from Event e
+            where e.deletedAt is null
+              and e.status = com.dongbang.event.domain.EventStatus.SCHEDULED
+              and e.type = com.dongbang.event.domain.EventType.EVENT
+              and e.startsAt >= :from and e.startsAt < :until
+            order by e.startsAt asc, e.id asc
+            """)
+    List<Event> findScheduledEventsStartingBetween(@Param("from") Instant from,
+                                                   @Param("until") Instant until);
 }

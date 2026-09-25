@@ -5,6 +5,9 @@ import com.dongbang.global.config.SecurityConfig;
 import com.dongbang.global.config.WebMvcConfig;
 import com.dongbang.global.security.ApiSecurityExceptionHandler;
 import com.dongbang.mypage.application.MyPageService;
+import com.dongbang.mypage.application.MyPageActivityService;
+import com.dongbang.mypage.domain.MyFeeStatus;
+import com.dongbang.mypage.presentation.dto.response.MyActivitiesResponse;
 import com.dongbang.mypage.presentation.dto.response.CurrentMembershipResponse;
 import com.dongbang.mypage.presentation.dto.response.MyProfileResponse;
 import com.dongbang.mypage.presentation.dto.response.UpdateMyProfileResponse;
@@ -35,6 +38,7 @@ class MyPageControllerTest {
 
     @Autowired private MockMvc mvc;
     @MockitoBean private MyPageService myPageService;
+    @MockitoBean private MyPageActivityService myPageActivityService;
 
     @Test
     @DisplayName("내 프로필과 선택 동아리 회원 정보를 조회한다")
@@ -60,6 +64,34 @@ class MyPageControllerTest {
                 .andExpect(jsonPath("$.result.oauthProviders[0]").value("GOOGLE"))
                 .andExpect(jsonPath("$.result.currentMembership.role").value("MANAGER"))
                 .andExpect(jsonPath("$.result.currentMembership.generation").value("11기"));
+    }
+
+    @Test
+    @DisplayName("내 활동 내역 요약과 신청 행사를 조회한다")
+    void getMyActivities() throws Exception {
+        given(myPageActivityService.getMyActivities(1L, 10L)).willReturn(new MyActivitiesResponse(
+                new MyActivitiesResponse.Summary(1, MyFeeStatus.PAID),
+                List.of(new MyActivitiesResponse.RegisteredEvent(
+                        31L, "프론트 스터디", Instant.parse("2026-09-17T10:00:00Z"), "REGISTERED"))
+        ));
+
+        mvc.perform(get("/api/v1/users/me/activities")
+                        .queryParam("organizationId", "10")
+                        .with(user("1").roles("USER")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.summary.eventRegistrationCount").value(1))
+                .andExpect(jsonPath("$.result.summary.feeStatus").value("PAID"))
+                .andExpect(jsonPath("$.result.registeredEvents[0].eventId").value(31))
+                .andExpect(jsonPath("$.result.registeredEvents[0].registrationStatus").value("REGISTERED"));
+    }
+
+    @Test
+    @DisplayName("내 활동 내역은 동아리 ID가 필수다")
+    void getMyActivitiesRequiresOrganizationId() throws Exception {
+        mvc.perform(get("/api/v1/users/me/activities")
+                        .with(user("1").roles("USER")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_400_002"));
     }
 
     @Test

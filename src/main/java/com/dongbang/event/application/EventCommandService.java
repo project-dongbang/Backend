@@ -2,8 +2,10 @@ package com.dongbang.event.application;
 
 import com.dongbang.event.application.port.EventActivity;
 import com.dongbang.event.application.port.EventActivityPort;
+import com.dongbang.event.application.event.ScheduleCreatedEvent;
 import com.dongbang.event.domain.Event;
 import com.dongbang.event.domain.EventDetails;
+import com.dongbang.event.domain.EventType;
 import com.dongbang.event.domain.repository.EventRepository;
 import com.dongbang.event.exception.EventErrorCode;
 import com.dongbang.event.application.command.CreateEventCommand;
@@ -11,6 +13,7 @@ import com.dongbang.event.application.command.UpdateEventCommand;
 import com.dongbang.global.exception.GeneralException;
 import com.dongbang.global.response.code.GeneralErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +29,7 @@ public class EventCommandService {
     private final EventAccessService accessService;
     private final EventActivityPort activityPort;
     private final Clock clock;
+    private final ApplicationEventPublisher eventPublisher;
 
     public Long create(Long organizationId, Long userId, CreateEventCommand request) {
         // 작성자 정보에 동아리 멤버십 ID 사용
@@ -37,7 +41,10 @@ public class EventCommandService {
                 .details(request.details())
                 .build();
         Event saved = eventRepository.save(event);
-        // TODO(notification): 커밋 성공 후 SCHEDULE_CREATED 알림 연계 및 중복 방지 키 적용.
+        if (saved.getType() == EventType.SCHEDULE) {
+            eventPublisher.publishEvent(new ScheduleCreatedEvent(
+                    saved.getOrganizationId(), saved.getId(), saved.getTitle(), saved.getStartsAt()));
+        }
         return saved.getId();
     }
 

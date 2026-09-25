@@ -12,4 +12,5 @@ public interface EventRepository {
     Optional<Event> findForUpdate(Long id, Long organizationId);
     List<Event> findOverlapping(Long organizationId, Instant from, Instant until);
     List<Event> findAttendanceEvents(Long organizationId);
+    List<Event> findScheduledEventsStartingBetween(Instant from, Instant until);
 }
