@@ -2,14 +2,18 @@ package com.dongbang.event.presentation;
 
 import com.dongbang.event.application.EventCommandService;
 import com.dongbang.event.application.EventQueryService;
+import com.dongbang.event.exception.EventErrorCode;
 import com.dongbang.event.presentation.dto.request.CreateEventRequest;
 import com.dongbang.event.presentation.dto.request.UpdateEventRequest;
 import com.dongbang.event.presentation.dto.response.CalendarResponse;
 import com.dongbang.event.presentation.dto.response.CreateEventResponse;
 import com.dongbang.event.presentation.dto.response.EventDetailResponse;
+import com.dongbang.global.response.ApiErrorExamples;
 import com.dongbang.global.response.ApiResponse;
+import com.dongbang.global.response.code.GeneralErrorCode;
 import com.dongbang.global.response.code.GeneralSuccessCode;
 import com.dongbang.global.security.CurrentUserId;
+import com.dongbang.organization.exception.OrganizationErrorCode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -25,6 +29,8 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/organizations/{organizationId}")
 @Tag(name = "일정·행사", description = "동아리 일정·행사 관리 API")
+@ApiErrorExamples(value = GeneralErrorCode.class, names = {"BAD_REQUEST", "VALIDATION_ERROR", "UNAUTHORIZED", "FORBIDDEN"})
+@ApiErrorExamples(value = OrganizationErrorCode.class, names = {"ORGANIZATION_NOT_FOUND"})
 public class EventController {
 
     private final EventCommandService commandService;
@@ -33,6 +39,7 @@ public class EventController {
     // 1. 월별 캘린더 조회
     @GetMapping("/calendar")
     @Operation(summary = "월별 캘린더 조회", description = "해당 월의 일정·행사와 회비 납부 마감일을 조회합니다.")
+    @ApiErrorExamples(value = OrganizationErrorCode.class, names = {"MEMBER_REQUIRED"})
     public ApiResponse<CalendarResponse> calendar(
             @Parameter(hidden = true) @CurrentUserId Long userId,
             @PathVariable @Positive Long organizationId,
@@ -46,6 +53,8 @@ public class EventController {
     @PostMapping("/events")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "일정·행사 등록", description = "운영진이 일반 일정 또는 행사를 등록합니다.")
+    @ApiErrorExamples(value = OrganizationErrorCode.class, names = {"STAFF_REQUIRED"})
+    @ApiErrorExamples(value = EventErrorCode.class, names = {"INVALID_EVENT_TIME"})
     public ApiResponse<CreateEventResponse> create(
             @Parameter(hidden = true) @CurrentUserId Long userId,
             @PathVariable @Positive Long organizationId,
@@ -57,6 +66,8 @@ public class EventController {
     // 3. 일정·행사 상세 조회
     @GetMapping("/events/{eventId}")
     @Operation(summary = "일정·행사 상세 조회", description = "동아리 일정·행사의 상세 정보를 조회합니다.")
+    @ApiErrorExamples(value = OrganizationErrorCode.class, names = {"MEMBER_REQUIRED"})
+    @ApiErrorExamples(value = EventErrorCode.class, names = {"EVENT_NOT_FOUND"})
     public ApiResponse<EventDetailResponse> detail(
             @Parameter(hidden = true) @CurrentUserId Long userId,
             @PathVariable @Positive Long organizationId,
@@ -68,6 +79,10 @@ public class EventController {
     // 4. 일정·행사 수정
     @PatchMapping("/events/{eventId}")
     @Operation(summary = "일정·행사 수정", description = "운영진이 일정·행사 정보를 수정합니다.")
+    @ApiErrorExamples(value = OrganizationErrorCode.class, names = {"STAFF_REQUIRED"})
+    @ApiErrorExamples(value = EventErrorCode.class, names = {
+            "EVENT_NOT_FOUND", "EVENT_CANCELED", "INVALID_EVENT_TIME", "CAPACITY_EXCEEDED", "ATTENDANCE_ALREADY_STARTED"
+    })
     public ApiResponse<Void> update(
             @Parameter(hidden = true) @CurrentUserId Long userId,
             @PathVariable @Positive Long organizationId,
@@ -80,6 +95,8 @@ public class EventController {
     // 5. 일정·행사 삭제
     @DeleteMapping("/events/{eventId}")
     @Operation(summary = "일정·행사 삭제", description = "운영진이 일정·행사를 삭제합니다.")
+    @ApiErrorExamples(value = OrganizationErrorCode.class, names = {"STAFF_REQUIRED"})
+    @ApiErrorExamples(value = EventErrorCode.class, names = {"EVENT_NOT_FOUND", "ATTENDANCE_ALREADY_STARTED"})
     public ApiResponse<Void> delete(
             @Parameter(hidden = true) @CurrentUserId Long userId,
             @PathVariable @Positive Long organizationId,

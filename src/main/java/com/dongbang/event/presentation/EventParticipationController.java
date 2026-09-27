@@ -2,13 +2,17 @@ package com.dongbang.event.presentation;
 
 import com.dongbang.event.application.EventParticipationService;
 import com.dongbang.event.application.ParticipantCandidateService;
-import com.dongbang.event.application.result.ParticipantCandidatesResult;
 import com.dongbang.event.application.result.ChangeParticipantsResult;
 import com.dongbang.event.application.result.EventApplicationResult;
+import com.dongbang.event.application.result.ParticipantCandidatesResult;
+import com.dongbang.event.exception.EventErrorCode;
 import com.dongbang.event.presentation.dto.request.ChangeParticipantsRequest;
+import com.dongbang.global.response.ApiErrorExamples;
 import com.dongbang.global.response.ApiResponse;
+import com.dongbang.global.response.code.GeneralErrorCode;
 import com.dongbang.global.response.code.GeneralSuccessCode;
 import com.dongbang.global.security.CurrentUserId;
+import com.dongbang.organization.exception.OrganizationErrorCode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -22,6 +26,8 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/organizations/{organizationId}/events/{eventId}")
 @Tag(name = "일정·행사", description = "동아리 일정·행사 관리 API")
+@ApiErrorExamples(value = GeneralErrorCode.class, names = {"BAD_REQUEST", "VALIDATION_ERROR", "UNAUTHORIZED", "FORBIDDEN"})
+@ApiErrorExamples(value = OrganizationErrorCode.class, names = {"ORGANIZATION_NOT_FOUND"})
 public class EventParticipationController {
     private final EventParticipationService service;
     private final ParticipantCandidateService candidateService;
@@ -29,6 +35,10 @@ public class EventParticipationController {
     @PostMapping("/applications")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "행사 참가 신청")
+    @ApiErrorExamples(value = OrganizationErrorCode.class, names = {"MEMBER_REQUIRED"})
+    @ApiErrorExamples(value = EventErrorCode.class, names = {
+            "EVENT_NOT_FOUND", "EVENT_ONLY", "EVENT_CANCELED", "REGISTRATION_CLOSED", "REGISTRATION_FULL", "ALREADY_PARTICIPATING"
+    })
     public ApiResponse<EventApplicationResult> apply(@Parameter(hidden = true) @CurrentUserId Long userId,
             @PathVariable @Positive Long organizationId, @PathVariable @Positive Long eventId) {
         return ApiResponse.onSuccess(GeneralSuccessCode.CREATED, service.apply(organizationId, userId, eventId));
@@ -36,6 +46,10 @@ public class EventParticipationController {
 
     @DeleteMapping("/applications")
     @Operation(summary = "본인 참가 신청 취소", description = "신청 마감 전 취소할 수 있습니다.")
+    @ApiErrorExamples(value = OrganizationErrorCode.class, names = {"MEMBER_REQUIRED"})
+    @ApiErrorExamples(value = EventErrorCode.class, names = {
+            "EVENT_NOT_FOUND", "EVENT_ONLY", "EVENT_CANCELED", "REGISTRATION_CLOSED", "PARTICIPANT_NOT_FOUND"
+    })
     public ApiResponse<Void> withdraw(@Parameter(hidden = true) @CurrentUserId Long userId,
             @PathVariable @Positive Long organizationId, @PathVariable @Positive Long eventId) {
         service.withdraw(organizationId, userId, eventId);
@@ -44,6 +58,8 @@ public class EventParticipationController {
 
     @PostMapping("/applications/close")
     @Operation(summary = "행사 신청 조기 마감", description = "운영진 전용. 이미 마감했으면 성공을 반환합니다.")
+    @ApiErrorExamples(value = OrganizationErrorCode.class, names = {"STAFF_REQUIRED"})
+    @ApiErrorExamples(value = EventErrorCode.class, names = {"EVENT_NOT_FOUND", "EVENT_ONLY", "EVENT_CANCELED", "REGISTRATION_CLOSED"})
     public ApiResponse<Void> close(@Parameter(hidden = true) @CurrentUserId Long userId,
             @PathVariable @Positive Long organizationId, @PathVariable @Positive Long eventId) {
         service.closeRegistration(organizationId, userId, eventId);
@@ -52,6 +68,8 @@ public class EventParticipationController {
 
     @GetMapping("/participant-candidates")
     @Operation(summary = "행사 참가자 직접 수정 대상 조회")
+    @ApiErrorExamples(value = OrganizationErrorCode.class, names = {"STAFF_REQUIRED"})
+    @ApiErrorExamples(value = EventErrorCode.class, names = {"EVENT_NOT_FOUND", "EVENT_ONLY", "EVENT_CANCELED"})
     public ApiResponse<ParticipantCandidatesResult> candidates(
             @Parameter(hidden = true) @CurrentUserId Long userId,
             @PathVariable @Positive Long organizationId, @PathVariable @Positive Long eventId,
@@ -64,6 +82,10 @@ public class EventParticipationController {
 
     @PatchMapping("/participants")
     @Operation(summary = "행사 참가자 직접 수정 저장")
+    @ApiErrorExamples(value = OrganizationErrorCode.class, names = {"STAFF_REQUIRED"})
+    @ApiErrorExamples(value = EventErrorCode.class, names = {
+            "EVENT_NOT_FOUND", "EVENT_ONLY", "EVENT_CANCELED", "INVALID_PARTICIPANT_CHANGE", "VERSION_CONFLICT", "CAPACITY_EXCEEDED"
+    })
     public ApiResponse<ChangeParticipantsResult> changeParticipants(
             @Parameter(hidden = true) @CurrentUserId Long userId,
             @PathVariable @Positive Long organizationId, @PathVariable @Positive Long eventId,
