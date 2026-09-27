@@ -29,7 +29,7 @@ public interface AttendanceRecordJpaRepository
 
     @Override
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select r from AttendanceRecord r where r.attendanceSessionId = :sessionId and r.membershipId = :membershipId")
+    @Query("select r from AttendanceRecord r where r.attendanceSessionId = :sessionId and r.membershipId = :membershipId and r.targetActive = true")
     Optional<AttendanceRecord> findForUpdate(@Param("sessionId") Long sessionId,
                                              @Param("membershipId") Long membershipId);
 }

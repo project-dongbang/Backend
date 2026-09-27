@@ -111,7 +111,7 @@ public class AttendanceService {
     public void modify(Long organizationId, Long userId, Long eventId, Long attendanceId,
                        ModifyAttendanceCommand command) {
         Long actorId = access.requireStaff(organizationId, userId);
-        events.event(organizationId, eventId);
+        events.lockEvent(organizationId, eventId);
         AttendanceSession session = sessions.findByEventId(eventId)
                 .orElseThrow(() -> new GeneralException(AttendanceErrorCode.SESSION_NOT_STARTED));
         AttendanceRecord record = records.findForUpdateByIdAndAttendanceSessionId(attendanceId, session.getId())
@@ -126,7 +126,8 @@ public class AttendanceService {
     @Transactional
     public CheckIn checkIn(Long organizationId, Long userId, Long eventId, String qrToken) {
         access.requireMember(organizationId, userId);
-        events.event(organizationId, eventId);
+        // 참가자 변경 및 출석 종료와 동일한 행사 잠금 순서
+        events.lockEvent(organizationId, eventId);
         Long membershipId = ownMembership(organizationId, userId);
         if (!events.isParticipant(eventId, membershipId)) throw new GeneralException(AttendanceErrorCode.PARTICIPANT_ONLY);
         AttendanceSession expected = sessions.findByEventId(eventId)
@@ -134,11 +135,12 @@ public class AttendanceService {
         AttendanceSession session = sessions.findByQrToken(qrToken)
                 .orElseThrow(() -> new GeneralException(AttendanceErrorCode.INVALID_QR));
         if (!session.getId().equals(expected.getId())) throw new GeneralException(AttendanceErrorCode.DIFFERENT_EVENT_QR);
+        AttendanceRecord record = records.findForUpdate(session.getId(), membershipId)
+                .orElseThrow(() -> new GeneralException(AttendanceErrorCode.PARTICIPANT_ONLY));
+        // 잠금 대기 시간을 포함한 만료 검증
         Instant now = now();
         if (session.getStatus() == AttendanceSessionStatus.CLOSED) throw new GeneralException(AttendanceErrorCode.SESSION_CLOSED);
         if (session.isExpired(now)) throw new GeneralException(AttendanceErrorCode.QR_EXPIRED);
-        AttendanceRecord record = records.findForUpdate(session.getId(), membershipId)
-                .orElseThrow(() -> new GeneralException(AttendanceErrorCode.PARTICIPANT_ONLY));
         if (record.getStatus() == AttendanceStatus.PRESENT) throw new GeneralException(AttendanceErrorCode.ALREADY_PRESENT);
         record.checkIn(now);
         return new CheckIn(eventId, record.getId(), membershipId, record.getStatus(),
