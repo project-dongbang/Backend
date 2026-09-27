@@ -28,9 +28,9 @@ import static org.mockito.BDDMockito.given;
 
 @Tag("integration")
 @SpringBootTest(properties = {
-        "spring.datasource.url=${ATTENDANCE_TEST_DB_URL:jdbc:postgresql://localhost:55459/attendance_test}",
-        "spring.datasource.username=${ATTENDANCE_TEST_DB_USERNAME:attendance_test}",
-        "spring.datasource.password=${ATTENDANCE_TEST_DB_PASSWORD:isolated_test_only}"
+        "spring.datasource.url=${ATTENDANCE_TEST_DB_URL:${DB_URL:jdbc:postgresql://localhost:55459/attendance_test}}",
+        "spring.datasource.username=${ATTENDANCE_TEST_DB_USERNAME:${DB_USERNAME:attendance_test}}",
+        "spring.datasource.password=${ATTENDANCE_TEST_DB_PASSWORD:${DB_PASSWORD:isolated_test_only}}"
 })
 class AttendanceConcurrencyIntegrationTest {
     private static final Instant OPENED_AT = Instant.parse("2026-09-27T09:00:00Z");
