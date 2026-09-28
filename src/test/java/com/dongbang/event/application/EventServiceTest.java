@@ -74,18 +74,15 @@ class EventServiceTest {
         when(feeCalendarFacade.findDeadlines(1L, java.time.LocalDate.of(2026, 9, 1),
                 java.time.LocalDate.of(2026, 9, 30))).thenReturn(List.of(
                 new FeeCalendarFacade.FeeCalendarItem(201L, "2학기 정기 납부",
-                        java.time.LocalDate.of(2026, 9, 10), "정기 납부 항목",
-                        new java.math.BigDecimal("40000"), List.of(new java.math.BigDecimal("40000")),
-                        64, 58, 6)));
+                        java.time.LocalDate.of(2026, 9, 10))));
 
         var item = queries.calendar(1L, 1L, 2026, 9).events().getFirst();
 
         assertThat(item.type()).isEqualTo(com.dongbang.event.application.result.CalendarItemType.FEE_DUE);
         assertThat(item.feeItemId()).isEqualTo(201L);
         assertThat(item.startsAt()).isEqualTo(Instant.parse("2026-09-10T14:59:00Z"));
-        assertThat(item.targetCount()).isEqualTo(64);
-        assertThat(item.paidCount()).isEqualTo(58);
-        assertThat(item.unpaidCount()).isEqualTo(6);
+        assertThat(item.endsAt()).isEqualTo(item.startsAt());
+        assertThat(item.dueDate()).isEqualTo(java.time.LocalDate.of(2026, 9, 10));
     }
 
     @Test

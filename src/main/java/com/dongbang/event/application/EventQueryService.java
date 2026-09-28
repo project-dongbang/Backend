@@ -89,15 +89,14 @@ public class EventQueryService {
                 event.getLocation(), isEvent ? registrationStatus(event, activity, now) : null,
                 event.getCapacity(), isEvent ? activity.participantCount() : null,
                 isEvent ? activity.participating() : null,
-                null, null, null, null, null, null, null);
+                null);
     }
 
     private CalendarEventResult toCalendar(FeeCalendarFacade.FeeCalendarItem fee) {
         Instant deadline = fee.dueDate().atTime(LocalTime.of(23, 59)).atZone(CALENDAR_ZONE).toInstant();
         return new CalendarEventResult(
                 null, fee.feeItemId(), CalendarItemType.FEE_DUE, null, fee.title(), deadline, deadline,
-                null, null, null, null, null, fee.dueDate(), fee.description(), fee.memberAmount(),
-                fee.amountOptions(), fee.targetCount(), fee.paidCount(), fee.unpaidCount());
+                null, null, null, null, null, fee.dueDate());
     }
 
     private String registrationStatus(Event event, EventActivity activity, Instant now) {

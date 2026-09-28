@@ -1,9 +1,7 @@
 package com.dongbang.event.application.result;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.List;
 
 public record CalendarEventResult(
         Long eventId,
@@ -18,12 +16,6 @@ public record CalendarEventResult(
         Integer capacity,
         Integer participantCount,
         Boolean participating,
-        LocalDate dueDate,
-        String description,
-        BigDecimal memberAmount,
-        List<BigDecimal> amountOptions,
-        Long targetCount,
-        Long paidCount,
-        Long unpaidCount
+        LocalDate dueDate
 ) {
 }
