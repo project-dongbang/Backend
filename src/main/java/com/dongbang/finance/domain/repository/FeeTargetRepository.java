@@ -16,6 +16,7 @@ public interface FeeTargetRepository extends JpaRepository<FeeTarget, Long> {
     List<FeeTarget> findAllByFeeItemIdIn(Collection<Long> feeItemIds);
     List<FeeTarget> findAllByFeeItemIdInAndStatus(Collection<Long> feeItemIds, FeeTargetStatus status);
     Optional<FeeTarget> findByIdAndFeeItemId(Long id, Long feeItemId);
+    Optional<FeeTarget> findByFeeItemIdAndMembershipId(Long feeItemId, Long membershipId);
     Page<FeeTarget> findAllByMembershipId(Long membershipId, Pageable pageable);
     Page<FeeTarget> findAllByMembershipIdAndStatus(Long membershipId, FeeTargetStatus status, Pageable pageable);
     List<FeeTarget> findAllByMembershipId(Long membershipId);

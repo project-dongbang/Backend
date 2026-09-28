@@ -1,6 +1,12 @@
 package com.dongbang.finance.presentation;
 
 import com.dongbang.finance.application.FeeService;
+import com.dongbang.finance.application.FeeDetailQueryService;
+import com.dongbang.finance.application.FeeDetailResult.FeeItemDetail;
+import com.dongbang.finance.exception.FinanceErrorCode;
+import com.dongbang.global.response.ApiErrorExamples;
+import com.dongbang.global.response.code.GeneralErrorCode;
+import com.dongbang.organization.exception.OrganizationErrorCode;
 import com.dongbang.finance.domain.FeeTargetStatus;
 import com.dongbang.finance.presentation.dto.FinanceDtos.*;
 import com.dongbang.global.response.ApiResponse;
@@ -25,6 +31,43 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "납부 항목", description = "납부 항목과 회원별 납부 현황 API")
 public class FeeController {
     private final FeeService feeService;
+    private final FeeDetailQueryService feeDetailQueryService;
+
+    @GetMapping("/fee-items/{feeItemId}")
+    @Operation(summary = "회비 납부 마감 상세 조회", description = "운영진은 모금 현황을, 회원은 본인 납부 정보를 조회합니다.")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공",
+            useReturnTypeSchema = true, content = @io.swagger.v3.oas.annotations.media.Content(
+            mediaType = "application/json", examples = {
+                @io.swagger.v3.oas.annotations.media.ExampleObject(name = "운영진", value = """
+                        {"isSuccess":true,"code":"COMMON_200_001","message":"성공적으로 요청을 처리했습니다.",
+                         "result":{"feeItemId":201,"viewerType":"STAFF","title":"2026년 2학기 정기 납부",
+                         "dueDate":"2026-09-10","description":"2학기 동아리 운영을 위한 정기 납부 항목입니다.",
+                         "staffSummary":{"targetCount":64,"paidCount":58,"unpaidCount":6,
+                         "collectedAmount":2320000,"expectedAmount":2560000},"myPayment":null},"errorDetail":null}
+                        """),
+                @io.swagger.v3.oas.annotations.media.ExampleObject(name = "일반 회원", value = """
+                        {"isSuccess":true,"code":"COMMON_200_001","message":"성공적으로 요청을 처리했습니다.",
+                         "result":{"feeItemId":201,"viewerType":"MEMBER","title":"2026년 2학기 정기 납부",
+                         "dueDate":"2026-09-10","description":"2학기 동아리 운영을 위한 정기 납부 항목입니다.",
+                         "staffSummary":null,"myPayment":{"feeTargetId":91,"amountDue":40000,
+                         "status":"UNPAID","paidAt":null}},"errorDetail":null}
+                        """),
+                @io.swagger.v3.oas.annotations.media.ExampleObject(name = "납부 대상 아님", value = """
+                        {"isSuccess":true,"code":"COMMON_200_001","message":"성공적으로 요청을 처리했습니다.",
+                         "result":{"feeItemId":201,"viewerType":"MEMBER","title":"2026년 2학기 정기 납부",
+                         "dueDate":"2026-09-10","description":null,"staffSummary":null,"myPayment":null},
+                         "errorDetail":null}
+                        """)
+            }))
+    @ApiErrorExamples(value = GeneralErrorCode.class, names = {"VALIDATION_ERROR", "UNAUTHORIZED", "FORBIDDEN"})
+    @ApiErrorExamples(value = OrganizationErrorCode.class, names = {"ORGANIZATION_NOT_FOUND"})
+    @ApiErrorExamples(value = FinanceErrorCode.class, names = {"FEE_ITEM_NOT_FOUND"})
+    public ApiResponse<FeeItemDetail> detail(
+            @Parameter(hidden = true) @CurrentUserId Long userId,
+            @PathVariable @Positive Long organizationId, @PathVariable @Positive Long feeItemId) {
+        return ApiResponse.onSuccess(GeneralSuccessCode.OK,
+                feeDetailQueryService.detail(organizationId, userId, feeItemId));
+    }
 
     @GetMapping("/fee-items")
     @Operation(summary = "납부 항목 목록 조회")
