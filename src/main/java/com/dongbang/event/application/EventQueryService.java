@@ -23,6 +23,8 @@ import java.time.Instant;
 import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.LocalTime;
+import java.time.LocalDate;
+import java.time.temporal.TemporalAdjusters;
 import java.util.Comparator;
 import java.util.stream.Stream;
 
@@ -45,13 +47,13 @@ public class EventQueryService {
             throw new GeneralException(GeneralErrorCode.VALIDATION_ERROR);
         }
         YearMonth target = YearMonth.of(year, month);
-        // 한국 시간 기준 월 시작 이상 ~ 다음 달 시작 미만 조회
-        Instant from = target.atDay(1).atStartOfDay(CALENDAR_ZONE).toInstant();
-        Instant until = target.plusMonths(1).atDay(1).atStartOfDay(CALENDAR_ZONE).toInstant();
-        Instant now = clock.instant();
+        LocalDate fromDate = target.atDay(1).with(TemporalAdjusters.previousOrSame(java.time.DayOfWeek.SUNDAY));
+        LocalDate toDate = target.atEndOfMonth().with(TemporalAdjusters.nextOrSame(java.time.DayOfWeek.SATURDAY));
+        Instant from = fromDate.atStartOfDay(CALENDAR_ZONE).toInstant();
+        Instant until = toDate.plusDays(1).atStartOfDay(CALENDAR_ZONE).toInstant();
         var eventItems = eventRepository.findOverlapping(organizationId, from, until).stream()
-                .map(event -> toCalendar(event, activityPort.getActivity(organizationId, event.getId(), userId), now));
-        var feeItems = feeCalendarFacade.findDeadlines(organizationId, target.atDay(1), target.atEndOfMonth()).stream()
+                .map(this::toCalendar);
+        var feeItems = feeCalendarFacade.findDeadlines(organizationId, fromDate, toDate).stream()
                 .map(this::toCalendar);
         var events = Stream.concat(eventItems, feeItems)
                 .sorted(Comparator.comparing(CalendarEventResult::startsAt)
@@ -81,23 +83,16 @@ public class EventQueryService {
                 isEvent ? activity.attendanceSessionStatus() : null);
     }
 
-    private CalendarEventResult toCalendar(Event event, EventActivity activity, Instant now) {
-        boolean isEvent = event.getType() == EventType.EVENT;
+    private CalendarEventResult toCalendar(Event event) {
         return new CalendarEventResult(
-                event.getId(), null, CalendarItemType.valueOf(event.getType().name()), event.getStatus(),
-                event.getTitle(), event.getStartsAt(), event.getEndsAt(),
-                event.getLocation(), isEvent ? registrationStatus(event, activity, now) : null,
-                event.getCapacity(), isEvent ? activity.participantCount() : null,
-                isEvent ? activity.participating() : null,
-                null, null, null, null, null, null, null);
+                event.getId(), null, CalendarItemType.valueOf(event.getType().name()),
+                event.getTitle(), event.getStartsAt(), event.getEndsAt(), null);
     }
 
     private CalendarEventResult toCalendar(FeeCalendarFacade.FeeCalendarItem fee) {
         Instant deadline = fee.dueDate().atTime(LocalTime.of(23, 59)).atZone(CALENDAR_ZONE).toInstant();
         return new CalendarEventResult(
-                null, fee.feeItemId(), CalendarItemType.FEE_DUE, null, fee.title(), deadline, deadline,
-                null, null, null, null, null, fee.dueDate(), fee.description(), fee.memberAmount(),
-                fee.amountOptions(), fee.targetCount(), fee.paidCount(), fee.unpaidCount());
+                null, fee.feeItemId(), CalendarItemType.FEE_DUE, fee.title(), deadline, deadline, fee.dueDate());
     }
 
     private String registrationStatus(Event event, EventActivity activity, Instant now) {

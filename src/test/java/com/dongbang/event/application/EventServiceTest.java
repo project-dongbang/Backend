@@ -56,36 +56,32 @@ class EventServiceTest {
 
     @Test
     void calendarUsesKoreanMonthBoundaries() {
-        Instant from = Instant.parse("2026-08-31T15:00:00Z");
-        Instant until = Instant.parse("2026-09-30T15:00:00Z");
+        Instant from = Instant.parse("2026-08-29T15:00:00Z");
+        Instant until = Instant.parse("2026-10-03T15:00:00Z");
         when(repository.findOverlapping(1L, from, until)).thenReturn(List.of());
-        when(feeCalendarFacade.findDeadlines(1L, java.time.LocalDate.of(2026, 9, 1),
-                java.time.LocalDate.of(2026, 9, 30))).thenReturn(List.of());
+        when(feeCalendarFacade.findDeadlines(1L, java.time.LocalDate.of(2026, 8, 30),
+                java.time.LocalDate.of(2026, 10, 3))).thenReturn(List.of());
         assertThat(queries.calendar(1L, 1L, 2026, 9).events()).isEmpty();
         verify(access).requireMember(1L, 1L);
         verify(repository).findOverlapping(1L, from, until);
     }
 
     @Test
-    void calendarIncludesFeeDeadlineAt2359KoreanTime() {
-        Instant from = Instant.parse("2026-08-31T15:00:00Z");
-        Instant until = Instant.parse("2026-09-30T15:00:00Z");
+    void calendarIncludesDisplayedRangeAndFeeDeadlineAt2359KoreanTime() {
+        Instant from = Instant.parse("2026-08-29T15:00:00Z");
+        Instant until = Instant.parse("2026-10-03T15:00:00Z");
         when(repository.findOverlapping(1L, from, until)).thenReturn(List.of());
-        when(feeCalendarFacade.findDeadlines(1L, java.time.LocalDate.of(2026, 9, 1),
-                java.time.LocalDate.of(2026, 9, 30))).thenReturn(List.of(
+        when(feeCalendarFacade.findDeadlines(1L, java.time.LocalDate.of(2026, 8, 30),
+                java.time.LocalDate.of(2026, 10, 3))).thenReturn(List.of(
                 new FeeCalendarFacade.FeeCalendarItem(201L, "2학기 정기 납부",
-                        java.time.LocalDate.of(2026, 9, 10), "정기 납부 항목",
-                        new java.math.BigDecimal("40000"), List.of(new java.math.BigDecimal("40000")),
-                        64, 58, 6)));
+                        java.time.LocalDate.of(2026, 9, 10))));
 
         var item = queries.calendar(1L, 1L, 2026, 9).events().getFirst();
 
         assertThat(item.type()).isEqualTo(com.dongbang.event.application.result.CalendarItemType.FEE_DUE);
         assertThat(item.feeItemId()).isEqualTo(201L);
         assertThat(item.startsAt()).isEqualTo(Instant.parse("2026-09-10T14:59:00Z"));
-        assertThat(item.targetCount()).isEqualTo(64);
-        assertThat(item.paidCount()).isEqualTo(58);
-        assertThat(item.unpaidCount()).isEqualTo(6);
+        verifyNoInteractions(activityPort);
     }
 
     @Test

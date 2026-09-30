@@ -20,7 +20,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 
@@ -52,12 +51,10 @@ class EventControllerTest {
     }
 
     @Test
-    void calendarReturnsFeeDeadlineDetails() throws Exception {
-        var fee = new CalendarEventResult(null, 201L, CalendarItemType.FEE_DUE, null,
+    void calendarReturnsFeeDeadlineListItem() throws Exception {
+        var fee = new CalendarEventResult(null, 201L, CalendarItemType.FEE_DUE,
                 "2026년 2학기 정기 납부", Instant.parse("2026-09-10T14:59:00Z"),
-                Instant.parse("2026-09-10T14:59:00Z"), null, null, null, null, null,
-                LocalDate.of(2026, 9, 10), "정기 납부 항목", new BigDecimal("40000"),
-                List.of(new BigDecimal("40000")), 64L, 58L, 6L);
+                Instant.parse("2026-09-10T14:59:00Z"), LocalDate.of(2026, 9, 10));
         when(queries.calendar(1L, 7L, 2026, 9)).thenReturn(new CalendarResult(2026, 9, List.of(fee)));
 
         mvc.perform(get("/api/v1/organizations/1/calendar")
@@ -66,10 +63,8 @@ class EventControllerTest {
                 .andExpect(jsonPath("$.result.events[0].type").value("FEE_DUE"))
                 .andExpect(jsonPath("$.result.events[0].feeItemId").value(201))
                 .andExpect(jsonPath("$.result.events[0].dueDate").value("2026-09-10"))
-                .andExpect(jsonPath("$.result.events[0].memberAmount").value(40000))
-                .andExpect(jsonPath("$.result.events[0].targetCount").value(64))
-                .andExpect(jsonPath("$.result.events[0].paidCount").value(58))
-                .andExpect(jsonPath("$.result.events[0].unpaidCount").value(6))
+                .andExpect(jsonPath("$.result.events[0].memberAmount").doesNotExist())
+                .andExpect(jsonPath("$.result.events[0].targetCount").doesNotExist())
                 .andExpect(jsonPath("$.result.events[0].eventId").doesNotExist());
     }
 
