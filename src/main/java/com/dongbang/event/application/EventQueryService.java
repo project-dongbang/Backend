@@ -47,6 +47,7 @@ public class EventQueryService {
             throw new GeneralException(GeneralErrorCode.VALIDATION_ERROR);
         }
         YearMonth target = YearMonth.of(year, month);
+        // 캘린더 표시 영역: 일요일 ~ 토요일
         LocalDate fromDate = target.atDay(1).with(TemporalAdjusters.previousOrSame(java.time.DayOfWeek.SUNDAY));
         LocalDate toDate = target.atEndOfMonth().with(TemporalAdjusters.nextOrSame(java.time.DayOfWeek.SATURDAY));
         Instant from = fromDate.atStartOfDay(CALENDAR_ZONE).toInstant();
@@ -84,12 +85,14 @@ public class EventQueryService {
     }
 
     private CalendarEventResult toCalendar(Event event) {
+        // 캘린더 목록: 상세 정보 제외
         return new CalendarEventResult(
                 event.getId(), null, CalendarItemType.valueOf(event.getType().name()),
                 event.getTitle(), event.getStartsAt(), event.getEndsAt(), null);
     }
 
     private CalendarEventResult toCalendar(FeeCalendarFacade.FeeCalendarItem fee) {
+        // 회비 마감: 한국 시간 23:59
         Instant deadline = fee.dueDate().atTime(LocalTime.of(23, 59)).atZone(CALENDAR_ZONE).toInstant();
         return new CalendarEventResult(
                 null, fee.feeItemId(), CalendarItemType.FEE_DUE, fee.title(), deadline, deadline, fee.dueDate());
