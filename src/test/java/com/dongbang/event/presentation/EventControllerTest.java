@@ -51,11 +51,10 @@ class EventControllerTest {
     }
 
     @Test
-    void calendarReturnsFeeDeadlineWithoutPaymentDetails() throws Exception {
-        var fee = new CalendarEventResult(null, 201L, CalendarItemType.FEE_DUE, null,
+    void calendarReturnsFeeDeadlineListItem() throws Exception {
+        var fee = new CalendarEventResult(null, 201L, CalendarItemType.FEE_DUE,
                 "2026년 2학기 정기 납부", Instant.parse("2026-09-10T14:59:00Z"),
-                Instant.parse("2026-09-10T14:59:00Z"), null, null, null, null, null,
-                LocalDate.of(2026, 9, 10));
+                Instant.parse("2026-09-10T14:59:00Z"), LocalDate.of(2026, 9, 10));
         when(queries.calendar(1L, 7L, 2026, 9)).thenReturn(new CalendarResult(2026, 9, List.of(fee)));
 
         mvc.perform(get("/api/v1/organizations/1/calendar")
