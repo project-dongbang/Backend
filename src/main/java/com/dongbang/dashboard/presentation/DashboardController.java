@@ -1,9 +1,12 @@
 package com.dongbang.dashboard.presentation;
 
 import com.dongbang.dashboard.application.DashboardQueryService;
+import com.dongbang.dashboard.exception.DashboardErrorCode;
 import com.dongbang.dashboard.presentation.dto.AdminDashboardResponse;
 import com.dongbang.dashboard.presentation.dto.MemberDashboardResponse;
 import com.dongbang.global.response.ApiResponse;
+import com.dongbang.global.response.ApiErrorExamples;
+import com.dongbang.global.response.code.GeneralErrorCode;
 import com.dongbang.global.response.code.GeneralSuccessCode;
 import com.dongbang.global.security.CurrentUserId;
 import io.swagger.v3.oas.annotations.Operation;
@@ -16,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @Tag(name = "대시보드", description = "동아리 대시보드 조회 API")
+@ApiErrorExamples(value = GeneralErrorCode.class, names = {"BAD_REQUEST", "UNAUTHORIZED", "FORBIDDEN"})
 public class DashboardController {
 
     private final DashboardQueryService dashboardQueryService;
@@ -23,6 +27,7 @@ public class DashboardController {
     // 1. 운영진 대시보드 조회
     @GetMapping("/api/v1/organizations/{organizationId}/dashboard/admin")
     @Operation(summary = "운영진 대시보드 조회", description = "운영진용 동아리 대시보드 정보를 조회합니다.")
+    @ApiErrorExamples(value = DashboardErrorCode.class, names = {"STAFF_REQUIRED", "ORGANIZATION_NOT_FOUND"})
     public ApiResponse<AdminDashboardResponse> getAdminDashboard(
             @CurrentUserId Long userId,
             @PathVariable Long organizationId
@@ -34,6 +39,7 @@ public class DashboardController {
     // 2. 일반 회원 대시보드 조회
     @GetMapping("/api/v1/organizations/{organizationId}/dashboard/member")
     @Operation(summary = "일반 회원 대시보드 조회", description = "일반 회원용 동아리 대시보드 정보를 조회합니다.")
+    @ApiErrorExamples(value = DashboardErrorCode.class, names = {"MEMBER_REQUIRED", "ORGANIZATION_NOT_FOUND"})
     public ApiResponse<MemberDashboardResponse> getMemberDashboard(
             @CurrentUserId Long userId,
             @PathVariable Long organizationId

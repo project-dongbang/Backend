@@ -81,6 +81,8 @@ class EventServiceTest {
         assertThat(item.type()).isEqualTo(com.dongbang.event.application.result.CalendarItemType.FEE_DUE);
         assertThat(item.feeItemId()).isEqualTo(201L);
         assertThat(item.startsAt()).isEqualTo(Instant.parse("2026-09-10T14:59:00Z"));
+        assertThat(item.endsAt()).isEqualTo(item.startsAt());
+        assertThat(item.dueDate()).isEqualTo(java.time.LocalDate.of(2026, 9, 10));
         verifyNoInteractions(activityPort);
     }
 

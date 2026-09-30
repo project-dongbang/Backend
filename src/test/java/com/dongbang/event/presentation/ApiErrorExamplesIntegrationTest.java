@@ -21,6 +21,17 @@ class ApiErrorExamplesIntegrationTest {
     @Autowired MockMvc mvc;
 
     @Test
+    void feeDetailPublishesRoleExamplesAndScopedErrors() throws Exception {
+        String operation = "$.paths['/api/v1/organizations/{organizationId}/fee-items/{feeItemId}'].get";
+        mvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(operation + ".responses['200'].content['application/json'].examples.length()").value(3))
+                .andExpect(jsonPath(operation + ".responses['403'].content['application/json'].examples.GeneralErrorCode_FORBIDDEN").exists())
+                .andExpect(jsonPath(operation + ".responses['404'].content['application/json'].examples.FinanceErrorCode_FEE_ITEM_NOT_FOUND").exists())
+                .andExpect(jsonPath(operation + ".responses['404'].content['application/json'].examples.OrganizationErrorCode_ORGANIZATION_NOT_FOUND").exists());
+    }
+
+    @Test
     void openApiPublishesQrExpirationExample() throws Exception {
         String example = "$.paths['/api/v1/organizations/{organizationId}/events/{eventId}/attendance/check-in']"
                 + ".post.responses['410'].content['application/json'].examples.AttendanceErrorCode_QR_EXPIRED.value";

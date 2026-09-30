@@ -64,7 +64,11 @@ class EventControllerTest {
                 .andExpect(jsonPath("$.result.events[0].feeItemId").value(201))
                 .andExpect(jsonPath("$.result.events[0].dueDate").value("2026-09-10"))
                 .andExpect(jsonPath("$.result.events[0].memberAmount").doesNotExist())
+                .andExpect(jsonPath("$.result.events[0].amountOptions").doesNotExist())
+                .andExpect(jsonPath("$.result.events[0].description").doesNotExist())
                 .andExpect(jsonPath("$.result.events[0].targetCount").doesNotExist())
+                .andExpect(jsonPath("$.result.events[0].paidCount").doesNotExist())
+                .andExpect(jsonPath("$.result.events[0].unpaidCount").doesNotExist())
                 .andExpect(jsonPath("$.result.events[0].eventId").doesNotExist());
     }
 
