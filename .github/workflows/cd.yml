@@ -97,6 +97,8 @@ jobs:
           file: ./Dockerfile.prod
           platforms: linux/arm64
           push: true
+          provenance: false
+          sbom: false
           tags: |
             ${{ steps.image.outputs.repository }}:${{ steps.image.outputs.tag }}
             ${{ steps.image.outputs.repository }}:latest
@@ -108,6 +110,8 @@ jobs:
           file: ./receipt-ocr/Dockerfile
           platforms: linux/arm64
           push: true
+          provenance: false
+          sbom: false
           tags: |
             ${{ steps.image.outputs.ocr_repository }}:${{ steps.image.outputs.tag }}
             ${{ steps.image.outputs.ocr_repository }}:latest
