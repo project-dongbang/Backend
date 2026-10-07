@@ -37,17 +37,22 @@ public final class FinanceDtos {
         private LocalDate dueDate;
         @Size(max = 1000) private String description;
         @Valid private PaymentAccount paymentAccount;
+        @Size(min = 1) private List<@Valid CreateCategory> categories;
         private boolean descriptionPresent;
+        private boolean categoriesPresent;
         public String title() { return title; }
         public LocalDate dueDate() { return dueDate; }
         public String description() { return description; }
         public PaymentAccount paymentAccount() { return paymentAccount; }
+        public List<CreateCategory> categories() { return categories; }
         public void setTitle(String title) { this.title = title; }
         public void setDueDate(LocalDate dueDate) { this.dueDate = dueDate; }
         @JsonSetter("description") public void setDescription(String description) { this.description = description; this.descriptionPresent = true; }
         public void setPaymentAccount(PaymentAccount paymentAccount) { this.paymentAccount = paymentAccount; }
+        @JsonSetter("categories") public void setCategories(List<CreateCategory> categories) { this.categories = categories; this.categoriesPresent = true; }
         public boolean descriptionPresent() { return descriptionPresent; }
-        public boolean isEmpty() { return title == null && dueDate == null && !descriptionPresent && paymentAccount == null; }
+        public boolean categoriesPresent() { return categoriesPresent; }
+        public boolean isEmpty() { return title == null && dueDate == null && !descriptionPresent && paymentAccount == null && !categoriesPresent; }
     }
 
     public record CategoryResult(Long categoryId, String name, BigDecimal amount, long targetCount) {}

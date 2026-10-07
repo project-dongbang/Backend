@@ -15,6 +15,7 @@ public interface FinancialTransactionRepository extends JpaRepository<FinancialT
     Optional<FinancialTransaction> findByIdAndOrganizationId(Long id, Long organizationId);
     Optional<FinancialTransaction> findFirstByFeeTargetIdAndTransactionTypeAndStatus(Long feeTargetId, TransactionType type, TransactionStatus status);
     List<FinancialTransaction> findAllByFeeItemId(Long feeItemId);
+    boolean existsByFeeItemId(Long feeItemId);
     @Query("SELECT CASE WHEN COUNT(t) > 0 THEN true ELSE false END FROM FinancialTransaction t, UploadedFile f " +
             "WHERE t.organizationId = :organizationId AND t.evidenceFileId = f.id AND f.checksum = :checksum " +
             "AND f.deletedAt IS NULL AND t.status = :status")

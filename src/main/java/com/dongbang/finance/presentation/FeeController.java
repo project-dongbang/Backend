@@ -34,7 +34,7 @@ public class FeeController {
     private final FeeDetailQueryService feeDetailQueryService;
 
     @GetMapping("/fee-items/{feeItemId}")
-    @Operation(summary = "회비 납부 마감 상세 조회", description = "운영진은 모금 현황을, 회원은 본인 납부 정보를 조회합니다.")
+    @Operation(summary = "회비 납부 마감 상세 조회", description = "운영진은 모금 현황과 편집용 계좌·카테고리·대상 목록을 조회합니다. 회원은 본인 납부 정보만 조회하며 editDetails는 null입니다. categoriesEditable이 false면 납부 이력이 있어 카테고리 교체가 불가능합니다.")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공",
             useReturnTypeSchema = true, content = @io.swagger.v3.oas.annotations.media.Content(
             mediaType = "application/json", examples = {
@@ -43,19 +43,22 @@ public class FeeController {
                          "result":{"feeItemId":201,"viewerType":"STAFF","title":"2026년 2학기 정기 납부",
                          "dueDate":"2026-09-10","description":"2학기 동아리 운영을 위한 정기 납부 항목입니다.",
                          "staffSummary":{"targetCount":64,"paidCount":58,"unpaidCount":6,
-                         "collectedAmount":2320000,"expectedAmount":2560000},"myPayment":null},"errorDetail":null}
+                         "collectedAmount":2320000,"expectedAmount":2560000},"myPayment":null,
+                         "editDetails":{"paymentAccount":{"bankName":"국민은행","accountNumber":"123-456","accountHolder":"동방"},
+                         "categoriesEditable":false,"categories":[{"categoryId":31,"name":"정기 회비","amount":40000,
+                         "targets":[{"feeTargetId":91,"membershipId":12,"amountDue":40000,"status":"PAID"}]}]}},"errorDetail":null}
                         """),
                 @io.swagger.v3.oas.annotations.media.ExampleObject(name = "일반 회원", value = """
                         {"isSuccess":true,"code":"COMMON_200_001","message":"성공적으로 요청을 처리했습니다.",
                          "result":{"feeItemId":201,"viewerType":"MEMBER","title":"2026년 2학기 정기 납부",
                          "dueDate":"2026-09-10","description":"2학기 동아리 운영을 위한 정기 납부 항목입니다.",
                          "staffSummary":null,"myPayment":{"feeTargetId":91,"amountDue":40000,
-                         "status":"UNPAID","paidAt":null}},"errorDetail":null}
+                         "status":"UNPAID","paidAt":null},"editDetails":null},"errorDetail":null}
                         """),
                 @io.swagger.v3.oas.annotations.media.ExampleObject(name = "납부 대상 아님", value = """
                         {"isSuccess":true,"code":"COMMON_200_001","message":"성공적으로 요청을 처리했습니다.",
                          "result":{"feeItemId":201,"viewerType":"MEMBER","title":"2026년 2학기 정기 납부",
-                         "dueDate":"2026-09-10","description":null,"staffSummary":null,"myPayment":null},
+                         "dueDate":"2026-09-10","description":null,"staffSummary":null,"myPayment":null,"editDetails":null},
                          "errorDetail":null}
                         """)
             }))
@@ -90,7 +93,20 @@ public class FeeController {
     }
 
     @PatchMapping("/fee-items/{feeItemId}")
-    @Operation(summary = "납부 항목 수정")
+    @Operation(summary = "납부 항목 수정", description = "운영진 전용. 제목·기한·설명·입금 계좌는 부분 수정합니다. categories를 보내면 목록 전체를 교체하고 카테고리/대상 ID가 새로 발급됩니다. 각 카테고리의 amount가 대상별 부과 금액으로 적용됩니다. categories는 비어 있거나 null일 수 없고, 이미 납부 이력(무효화된 수입 포함)이 있으면 409 FEE_409_004를 반환합니다. categories를 생략하면 기존 카테고리·대상은 유지합니다.")
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(content = @io.swagger.v3.oas.annotations.media.Content(
+            mediaType = "application/json", examples = {
+                @io.swagger.v3.oas.annotations.media.ExampleObject(name = "기본 정보만 수정", value = """
+                        {"title":"2026년 2학기 회비","dueDate":"2026-09-30",
+                         "paymentAccount":{"bankName":"국민은행","accountNumber":"123-456","accountHolder":"동방"}}
+                        """),
+                @io.swagger.v3.oas.annotations.media.ExampleObject(name = "카테고리·대상 전체 교체", value = """
+                        {"categories":[{"name":"정기 회비","amount":40000,"targetMembershipIds":[12,13]},
+                                       {"name":"신입 회비","amount":20000,"targetMembershipIds":[14]}]}
+                        """)
+            }))
+    @ApiErrorExamples(value = FinanceErrorCode.class, names = {"FEE_ITEM_NOT_FOUND", "INVALID_TARGET", "DUPLICATE_TARGET", "CATEGORY_EDIT_AFTER_PAYMENT"})
+    @ApiErrorExamples(value = GeneralErrorCode.class, names = {"VALIDATION_ERROR", "UNAUTHORIZED", "FORBIDDEN"})
     public ApiResponse<FeeItemUpdatedResult> updateFeeItem(
             @Parameter(hidden = true) @CurrentUserId Long userId, @PathVariable @Positive Long organizationId,
             @PathVariable @Positive Long feeItemId, @Valid @RequestBody UpdateFeeItemRequest request) {

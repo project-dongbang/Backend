@@ -14,6 +14,7 @@ public enum FinanceErrorCode implements BaseErrorCode {
     FEE_TARGET_NOT_FOUND(HttpStatus.NOT_FOUND, "FEE_404_002", "회원별 납부 대상을 찾을 수 없습니다."),
     DUPLICATE_TARGET(HttpStatus.CONFLICT, "FEE_409_001", "이미 다른 납부 카테고리에 포함된 회원입니다."),
     INVALID_STATUS_CHANGE(HttpStatus.CONFLICT, "FEE_409_003", "현재 상태에서는 요청한 납부 상태로 변경할 수 없습니다."),
+    CATEGORY_EDIT_AFTER_PAYMENT(HttpStatus.CONFLICT, "FEE_409_004", "납부 이력이 있는 항목의 카테고리와 대상은 수정할 수 없습니다."),
     TRANSACTION_NOT_FOUND(HttpStatus.NOT_FOUND, "LEDGER_404_001", "장부 거래를 찾을 수 없습니다."),
     DUPLICATE_EVIDENCE(HttpStatus.CONFLICT, "LEDGER_409_001", "이미 등록된 영수증입니다."),
     VOID_TRANSACTION(HttpStatus.CONFLICT, "LEDGER_409_002", "무효화된 거래는 수정할 수 없습니다."),

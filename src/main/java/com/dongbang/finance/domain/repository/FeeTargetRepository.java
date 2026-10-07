@@ -5,6 +5,8 @@ import com.dongbang.finance.domain.FeeTargetStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
@@ -16,6 +18,8 @@ public interface FeeTargetRepository extends JpaRepository<FeeTarget, Long> {
     List<FeeTarget> findAllByFeeItemIdIn(Collection<Long> feeItemIds);
     List<FeeTarget> findAllByFeeItemIdInAndStatus(Collection<Long> feeItemIds, FeeTargetStatus status);
     Optional<FeeTarget> findByIdAndFeeItemId(Long id, Long feeItemId);
+    @Query("select target.feeItemId from FeeTarget target where target.id = :id")
+    Optional<Long> findFeeItemIdByTargetId(@Param("id") Long id);
     Optional<FeeTarget> findByFeeItemIdAndMembershipId(Long feeItemId, Long membershipId);
     Page<FeeTarget> findAllByMembershipId(Long membershipId, Pageable pageable);
     Page<FeeTarget> findAllByMembershipIdAndStatus(Long membershipId, FeeTargetStatus status, Pageable pageable);

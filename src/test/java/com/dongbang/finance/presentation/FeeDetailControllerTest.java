@@ -24,7 +24,9 @@ import java.time.LocalDate;
 import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(FeeController.class)
@@ -39,11 +41,15 @@ class FeeDetailControllerTest {
     void staffResponseContainsSummaryAndExplicitNullPayment() throws Exception {
         when(details.detail(1L, 7L, 201L)).thenReturn(new FeeItemDetail(201L, FeeViewerType.STAFF,
                 "정기 납부", LocalDate.of(2026, 9, 10), "설명",
-                new FeeStaffSummary(2, 1, 1, new BigDecimal("40000"), new BigDecimal("60000")), null));
+                new FeeStaffSummary(2, 1, 1, new BigDecimal("40000"), new BigDecimal("60000")), null,
+                new FeeEditDetails(new com.dongbang.finance.presentation.dto.FinanceDtos.PaymentAccount("은행", "123", "동방"),
+                        false, java.util.List.of())));
         mvc.perform(get(PATH).with(user("7").roles("USER")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.viewerType").value("STAFF"))
                 .andExpect(jsonPath("$.result.staffSummary.expectedAmount").value(60000))
+                .andExpect(jsonPath("$.result.editDetails.paymentAccount.accountNumber").value("123"))
+                .andExpect(jsonPath("$.result.editDetails.categoriesEditable").value(false))
                 .andExpect(jsonPath("$.result.myPayment").value(nullValue()))
                 .andExpect(jsonPath("$.errorDetail").hasJsonPath());
     }
@@ -52,19 +58,20 @@ class FeeDetailControllerTest {
     void memberResponseContainsOwnPaymentAndNoStaffSummary() throws Exception {
         when(details.detail(1L, 7L, 201L)).thenReturn(new FeeItemDetail(201L, FeeViewerType.MEMBER,
                 "정기 납부", LocalDate.of(2026, 9, 10), null, null,
-                new MyFeePayment(91L, new BigDecimal("20000"), FeeTargetStatus.UNPAID, null)));
+                new MyFeePayment(91L, new BigDecimal("20000"), FeeTargetStatus.UNPAID, null), null));
         mvc.perform(get(PATH).with(user("7").roles("USER")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.myPayment.amountDue").value(20000))
                 .andExpect(jsonPath("$.result.myPayment.status").value("UNPAID"))
                 .andExpect(jsonPath("$.result.staffSummary").hasJsonPath())
-                .andExpect(jsonPath("$.result.staffSummary").value(nullValue()));
+                .andExpect(jsonPath("$.result.staffSummary").value(nullValue()))
+                .andExpect(jsonPath("$.result.editDetails").value(nullValue()));
     }
 
     @Test
     void nonTargetMemberReceivesNullPayment() throws Exception {
         when(details.detail(1L, 7L, 201L)).thenReturn(new FeeItemDetail(201L, FeeViewerType.MEMBER,
-                "정기 납부", LocalDate.of(2026, 9, 10), null, null, null));
+                "정기 납부", LocalDate.of(2026, 9, 10), null, null, null, null));
         mvc.perform(get(PATH).with(user("7").roles("USER")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.myPayment").hasJsonPath())
@@ -100,5 +107,22 @@ class FeeDetailControllerTest {
                 .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("FEE_404_001"))
                 .andExpect(jsonPath("$.result").hasJsonPath())
                 .andExpect(jsonPath("$.errorDetail").value(nullValue()));
+    }
+
+    @Test
+    void metadataOnlyPatchStillPassesValidation() throws Exception {
+        mvc.perform(patch(PATH).with(user("7").roles("USER")).with(csrf())
+                        .contentType("application/json").content("{\"title\":\"새 회비\"}"))
+                .andExpect(status().isOk());
+        verify(fees).updateFeeItem(eq(1L), eq(7L), eq(201L), argThat(request ->
+                "새 회비".equals(request.title()) && !request.categoriesPresent()));
+    }
+
+    @Test
+    void emptyCategoryReplacementIsRejected() throws Exception {
+        mvc.perform(patch(PATH).with(user("7").roles("USER")).with(csrf())
+                        .contentType("application/json").content("{\"categories\":[]}"))
+                .andExpect(status().isBadRequest());
+        verify(fees, never()).updateFeeItem(anyLong(), anyLong(), anyLong(), any());
     }
 }
