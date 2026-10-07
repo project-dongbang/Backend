@@ -10,5 +10,6 @@ public interface PhotoRepository {
     Photo save(Photo photo);
     Optional<Photo> findById(Long id);
     Optional<Photo> findByIdAndOrganizationIdAndDeletedAtIsNull(Long id, Long organizationId);
+    long countByUploadedFileIdAndDeletedAtIsNull(Long uploadedFileId);
     List<Photo> findPhotosByCursor(Long organizationId, Long cursor, Pageable pageable);
 }
