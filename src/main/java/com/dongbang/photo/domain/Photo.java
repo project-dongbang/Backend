@@ -48,6 +48,10 @@ public class Photo extends BaseTimeEntity {
         this.title = title;
     }
 
+    public void replaceUploadedFile(Long uploadedFileId) {
+        this.uploadedFileId = uploadedFileId;
+    }
+
     public void delete() {
         this.deletedAt = Instant.now();
     }

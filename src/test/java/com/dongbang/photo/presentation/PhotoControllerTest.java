@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpMethod;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -142,6 +143,31 @@ class PhotoControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isSuccess").value(true))
                 .andExpect(jsonPath("$.result.title").value("수정된 제목"));
+    }
+
+    @Test
+    @DisplayName("사진 이미지 교체 API 호출 성공")
+    void replacePhotoImage() throws Exception {
+        Long photoId = 20L;
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "new.png", "image/png", "image-content".getBytes()
+        );
+        FileInfo fileInfo = new FileInfo(2L, "new-key", "new.png", "image/png", 1024L, "/uploads/new-key");
+        PhotoDetailResponse response = new PhotoDetailResponse(
+                photoId, orgId, "새 제목", fileInfo, new UploaderInfo(5L, "홍길동"), Instant.now(), Instant.now()
+        );
+        given(commandService.replacePhotoImage(eq(orgId), eq(1L), eq(photoId), any(), eq("새 제목")))
+                .willReturn(response);
+
+        mvc.perform(multipart(HttpMethod.PATCH, "/api/v1/organizations/{organizationId}/photos/{photoId}/image", orgId, photoId)
+                        .with(user("1").roles("USER"))
+                        .with(csrf())
+                        .file(file)
+                        .param("title", "새 제목"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.photoId").value(photoId))
+                .andExpect(jsonPath("$.result.title").value("새 제목"))
+                .andExpect(jsonPath("$.result.file.uploadedFileId").value(2));
     }
 
     @Test

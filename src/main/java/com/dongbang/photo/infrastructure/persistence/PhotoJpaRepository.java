@@ -18,6 +18,9 @@ public interface PhotoJpaRepository extends JpaRepository<Photo, Long>, PhotoRep
     Optional<Photo> findByIdAndOrganizationIdAndDeletedAtIsNull(Long id, Long organizationId);
 
     @Override
+    long countByUploadedFileIdAndDeletedAtIsNull(Long uploadedFileId);
+
+    @Override
     @Query("""
         SELECT p FROM Photo p
         WHERE p.organizationId = :organizationId

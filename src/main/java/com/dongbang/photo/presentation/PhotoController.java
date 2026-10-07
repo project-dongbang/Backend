@@ -101,6 +101,23 @@ public class PhotoController {
         return ApiResponse.onSuccess(GeneralSuccessCode.OK, response);
     }
 
+    @PatchMapping(value = "/api/v1/organizations/{organizationId}/photos/{photoId}/image",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "사진 이미지 교체", description = "운영진이 새 이미지 파일로 기존 사진을 교체합니다. title을 함께 보내면 제목도 수정합니다.")
+    @ApiErrorExamples(value = GeneralErrorCode.class, names = {"UNSUPPORTED_MEDIA_TYPE", "VALIDATION_ERROR"})
+    @ApiErrorExamples(value = PhotoErrorCode.class,
+            names = {"STAFF_REQUIRED", "PHOTO_NOT_FOUND", "FILE_NOT_FOUND", "FILE_EMPTY", "INVALID_FILE_TYPE", "FILE_UPLOAD_FAILED"})
+    public ApiResponse<PhotoDetailResponse> replacePhotoImage(
+            @CurrentUserId Long userId,
+            @PathVariable Long organizationId,
+            @PathVariable Long photoId,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "title", required = false) String title
+    ) {
+        PhotoDetailResponse response = commandService.replacePhotoImage(organizationId, userId, photoId, file, title);
+        return ApiResponse.onSuccess(GeneralSuccessCode.OK, response);
+    }
+
     // 5. 사진첩 사진 삭제
     @DeleteMapping("/api/v1/organizations/{organizationId}/photos/{photoId}")
     @Operation(summary = "사진 삭제", description = "동아리 사진첩에서 사진을 삭제합니다.")
