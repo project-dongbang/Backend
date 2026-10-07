@@ -164,6 +164,10 @@ chmod 600 .env
 
 `.env`의 데이터베이스, JWT, OAuth, S3 값과 선택적인 `GEMINI_API_KEY`를 실제 운영 값으로 변경해야 합니다. EC2에는 장기 AWS Access Key를 저장하지 않고 다음 권한을 가진 IAM Role을 연결합니다. `RECEIPT_OCR_URL`은 운영 Compose 내부 통신 주소인 `http://ocr:8000`을 유지합니다.
 
+프론트와 API가 서로 다른 사이트인 운영 환경에서는 `AUTH_COOKIE_SECURE=true`를 유지하고, EC2의 `.env`에서 `AUTH_ALLOWED_REDIRECT_URIS=https://dongbang-frontend.vercel.app,https://dongbang-frontend.vercel.app/auth/callback`로 설정합니다. GitHub Actions는 운영 `.env`를 덮어쓰지 않으므로 예시 파일 변경만으로는 반영되지 않습니다. Google/Kakao 개발자 콘솔의 OAuth 콜백은 프론트 주소가 아니라 각각 `https://api.3.36.171.188.nip.io/api/v1/auth/oauth/google/callback`, `https://api.3.36.171.188.nip.io/api/v1/auth/oauth/kakao/callback`입니다.
+
+프론트는 로그인 후 `GET /api/v1/auth/csrf`를 `credentials: 'include'`로 호출하여 `result.token`과 `result.headerName`을 받습니다. 이후 POST/PUT/PATCH/DELETE 요청에는 쿠키를 포함하고 `X-XSRF-TOKEN: <result.token>`을 전송합니다. CSRF 쿠키는 운영 환경에서 `Secure; SameSite=None`으로 발급되지만 브라우저의 서드파티 쿠키 차단 정책에 따라 교차 사이트 쿠키 자체가 차단될 수 있으므로 실제 운영 브라우저에서 로그인부터 변경 요청까지 확인해야 합니다.
+
 - `s3:PutObject`
 - `s3:GetObject`
 - `s3:DeleteObject`

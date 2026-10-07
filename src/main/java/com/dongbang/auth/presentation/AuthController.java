@@ -9,11 +9,13 @@ import com.dongbang.auth.infrastructure.token.JwtTokenService;
 import com.dongbang.auth.infrastructure.web.AuthCookieService;
 import com.dongbang.auth.presentation.dto.request.OnboardingRequest;
 import com.dongbang.auth.presentation.dto.response.AuthMeResponse;
+import com.dongbang.auth.presentation.dto.response.CsrfTokenResponse;
 import com.dongbang.auth.presentation.dto.response.OnboardingResponse;
 import com.dongbang.auth.presentation.dto.response.RefreshTokenResponse;
 import com.dongbang.global.response.ApiResponse;
 import com.dongbang.global.response.code.GeneralSuccessCode;
 import com.dongbang.global.security.CurrentUserId;
+import com.dongbang.global.security.SpaCsrfTokenRequestHandler;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -31,6 +33,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -48,6 +51,16 @@ public class AuthController {
     private final AuthApplicationService authService;
     private final AuthCookieService cookieService;
     private final JwtTokenService jwtTokenService;
+
+    @Operation(summary = "CSRF 토큰 조회", description = "프론트에서 쿠키를 직접 읽을 수 없는 경우 사용합니다. credentials를 포함해 호출하고 반환된 token을 상태 변경 요청의 headerName 헤더에 넣습니다.")
+    @GetMapping("/csrf")
+    public ApiResponse<CsrfTokenResponse> getCsrfToken(
+            @Parameter(hidden = true)
+            @RequestAttribute(SpaCsrfTokenRequestHandler.RAW_TOKEN_ATTRIBUTE) String csrfToken
+    ) {
+        return ApiResponse.onSuccess(GeneralSuccessCode.OK,
+                new CsrfTokenResponse(csrfToken, "X-XSRF-TOKEN"));
+    }
 
     @Operation(summary = "Google OAuth 인증 URL 생성")
     @GetMapping("/oauth/google/authorize")

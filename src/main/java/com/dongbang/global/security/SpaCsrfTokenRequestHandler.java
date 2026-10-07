@@ -12,6 +12,8 @@ import java.util.function.Supplier;
 
 public final class SpaCsrfTokenRequestHandler implements CsrfTokenRequestHandler {
 
+    public static final String RAW_TOKEN_ATTRIBUTE = "dongbang.rawCsrfToken";
+
     private final CsrfTokenRequestHandler plain = new CsrfTokenRequestAttributeHandler();
     private final CsrfTokenRequestHandler xor = new XorCsrfTokenRequestAttributeHandler();
 
@@ -22,7 +24,7 @@ public final class SpaCsrfTokenRequestHandler implements CsrfTokenRequestHandler
             Supplier<CsrfToken> csrfToken
     ) {
         xor.handle(request, response, csrfToken);
-        csrfToken.get();
+        request.setAttribute(RAW_TOKEN_ATTRIBUTE, csrfToken.get().getToken());
     }
 
     @Override
