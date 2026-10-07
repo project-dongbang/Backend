@@ -7,6 +7,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -131,30 +132,21 @@ class S3FileStorageServiceTest {
     void getFileUrl_default() throws Exception {
         // given
         given(s3Properties.getBucket()).willReturn("dongbang-storage");
-        given(s3Properties.getCustomDomain()).willReturn(null);
         given(s3Properties.getUrlTtl()).willReturn(Duration.ofMinutes(15));
         PresignedGetObjectRequest presignedRequest = org.mockito.Mockito.mock(PresignedGetObjectRequest.class);
         given(presignedRequest.url()).willReturn(URI.create("https://signed.example.com/sample.jpg?signature=test").toURL());
         given(s3Presigner.presignGetObject(any(GetObjectPresignRequest.class))).willReturn(presignedRequest);
 
         // when
-        String url = s3FileStorageService.getFileUrl("organizations/1/photos/sample.jpg");
+        String url = s3FileStorageService.getFileUrl("organizations/1/receipts/sample.jpg");
 
         // then
         assertThat(url).isEqualTo("https://signed.example.com/sample.jpg?signature=test");
-    }
-
-    @Test
-    @DisplayName("성공: 커스텀 도메인(CDN) S3 URL 생성")
-    void getFileUrl_customDomain() {
-        // given
-        given(s3Properties.getCustomDomain()).willReturn("https://cdn.dongbang.com");
-
-        // when
-        String url = s3FileStorageService.getFileUrl("organizations/1/photos/sample.jpg");
-
-        // then
-        assertThat(url).isEqualTo("https://cdn.dongbang.com/organizations/1/photos/sample.jpg");
+        ArgumentCaptor<GetObjectPresignRequest> request = ArgumentCaptor.forClass(GetObjectPresignRequest.class);
+        verify(s3Presigner).presignGetObject(request.capture());
+        assertThat(request.getValue().signatureDuration()).isEqualTo(Duration.ofMinutes(15));
+        assertThat(request.getValue().getObjectRequest().bucket()).isEqualTo("dongbang-storage");
+        assertThat(request.getValue().getObjectRequest().key()).isEqualTo("organizations/1/receipts/sample.jpg");
     }
 
     @Test
