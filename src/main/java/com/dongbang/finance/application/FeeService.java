@@ -56,7 +56,7 @@ public class FeeService {
     @Transactional
     public FeeItemCreatedResult createFeeItem(Long organizationId, Long userId, CreateFeeItemRequest request) {
         Membership actor = accessService.requireStaff(organizationId, userId);
-        validateCreateRequest(organizationId, request);
+        validateCategories(organizationId, request.categories());
         FeeItem item = feeItemRepository.save(new FeeItem(organizationId, request.title().trim(), request.dueDate(),
                 trim(request.description()), request.paymentAccount().bankName().trim(),
                 request.paymentAccount().accountNumber().trim(),
@@ -84,21 +84,41 @@ public class FeeService {
     public FeeItemUpdatedResult updateFeeItem(Long organizationId, Long userId, Long feeItemId, UpdateFeeItemRequest request) {
         Membership actor = accessService.requireStaff(organizationId, userId);
         if (request.isEmpty()) throw new GeneralException(GeneralErrorCode.VALIDATION_ERROR);
-        FeeItem item = findItem(organizationId, feeItemId);
-        String before = snapshot(item);
+        FeeItem item = findLockedItem(organizationId, feeItemId);
+        if (request.categoriesPresent()) {
+            if (request.categories() == null) throw new GeneralException(GeneralErrorCode.VALIDATION_ERROR);
+            validateCategories(organizationId, request.categories());
+            // 이미 생성된 수입(무효화된 기록 포함)의 대상 참조와 금액을 보존한다.
+            if (feeTargetRepository.countByFeeItemIdAndStatus(item.getId(), FeeTargetStatus.PAID) > 0
+                    || transactionRepository.existsByFeeItemId(item.getId()))
+                throw new GeneralException(FinanceErrorCode.CATEGORY_EDIT_AFTER_PAYMENT);
+        }
+        String before = deletionSnapshot(item);
         PaymentAccount account = request.paymentAccount();
         item.update(trim(request.title()), request.dueDate(), trim(request.description()),
                 account == null ? null : account.bankName().trim(),
                 account == null ? null : account.accountNumber().trim(),
                 account == null ? null : account.accountHolder().trim(), request.descriptionPresent());
-        auditLogRepository.save(new AuditLog(organizationId, actor.getId(), "UPDATE", "FEE_ITEM", item.getId(), before, snapshot(item)));
+        if (request.categoriesPresent()) {
+            feeTargetRepository.deleteAll(feeTargetRepository.findAllByFeeItemId(item.getId()));
+            feeTargetRepository.flush();
+            feeCategoryRepository.deleteAll(feeCategoryRepository.findAllByFeeItemIdOrderByDisplayOrderAsc(item.getId()));
+            feeCategoryRepository.flush();
+            for (int i = 0; i < request.categories().size(); i++) {
+                CreateCategory input = request.categories().get(i);
+                FeeCategory category = feeCategoryRepository.save(new FeeCategory(item.getId(), input.name().trim(), input.amount(), i));
+                for (Long membershipId : input.targetMembershipIds())
+                    feeTargetRepository.save(new FeeTarget(item.getId(), category.getId(), membershipId, input.amount()));
+            }
+        }
+        auditLogRepository.save(new AuditLog(organizationId, actor.getId(), "UPDATE", "FEE_ITEM", item.getId(), before, deletionSnapshot(item)));
         return updated(item);
     }
 
     @Transactional
     public FeeItemDeletedResult deleteFeeItem(Long organizationId, Long userId, Long feeItemId) {
         Membership actor = accessService.requireStaff(organizationId, userId);
-        FeeItem item = findItem(organizationId, feeItemId);
+        FeeItem item = findLockedItem(organizationId, feeItemId);
         long categoryCount = feeCategoryRepository.countByFeeItemId(item.getId());
         long targetCount = feeTargetRepository.countByFeeItemId(item.getId());
         Instant now = Instant.now();
@@ -168,9 +188,11 @@ public class FeeService {
     @Transactional
     public FeeTargetStatusResult changeStatus(Long organizationId, Long userId, Long targetId, ChangeFeeTargetStatusRequest request) {
         Membership actor = accessService.requireStaff(organizationId, userId);
-        FeeTarget target = feeTargetRepository.findById(targetId)
+        Long feeItemId = feeTargetRepository.findFeeItemIdByTargetId(targetId)
                 .orElseThrow(() -> new GeneralException(FinanceErrorCode.FEE_TARGET_NOT_FOUND));
-        FeeItem item = findItem(organizationId, target.getFeeItemId());
+        FeeItem item = findLockedItem(organizationId, feeItemId);
+        FeeTarget target = feeTargetRepository.findByIdAndFeeItemId(targetId, item.getId())
+                .orElseThrow(() -> new GeneralException(FinanceErrorCode.FEE_TARGET_NOT_FOUND));
         Optional<FinancialTransaction> active = transactionRepository.findFirstByFeeTargetIdAndTransactionTypeAndStatus(
                 targetId, TransactionType.INCOME, TransactionStatus.POSTED);
         if (target.getStatus() == request.status()) {
@@ -201,9 +223,9 @@ public class FeeService {
         return "csv".equalsIgnoreCase(format) ? SpreadsheetExport.csv(rows) : SpreadsheetExport.xlsx(rows);
     }
 
-    private void validateCreateRequest(Long organizationId, CreateFeeItemRequest request) {
+    private void validateCategories(Long organizationId, List<CreateCategory> categories) {
         Set<String> names = new HashSet<>(); Set<Long> targetIds = new HashSet<>();
-        for (CreateCategory category : request.categories()) {
+        for (CreateCategory category : categories) {
             if (!names.add(category.name().trim())) throw new GeneralException(GeneralErrorCode.VALIDATION_ERROR);
             for (Long id : category.targetMembershipIds()) {
                 if (!targetIds.add(id)) throw new GeneralException(FinanceErrorCode.DUPLICATE_TARGET);
@@ -222,6 +244,10 @@ public class FeeService {
         return feeItemRepository.findByIdAndOrganizationId(feeItemId, organizationId)
                 .orElseThrow(() -> new GeneralException(FinanceErrorCode.FEE_ITEM_NOT_FOUND));
     }
+    private FeeItem findLockedItem(Long organizationId, Long feeItemId) {
+        return feeItemRepository.findLockedByIdAndOrganizationId(feeItemId, organizationId)
+                .orElseThrow(() -> new GeneralException(FinanceErrorCode.FEE_ITEM_NOT_FOUND));
+    }
     private PaymentAccount account(FeeItem item) { return new PaymentAccount(item.getBankName(), item.getAccountNumber(), item.getAccountHolder()); }
     private BigDecimal total(Collection<FeeTarget> targets) { return targets.stream().map(FeeTarget::getAmountDue).reduce(BigDecimal.ZERO, BigDecimal::add); }
     private FeeItemUpdatedResult updated(FeeItem item) {
@@ -232,7 +258,6 @@ public class FeeService {
         return new FeeTargetStatusResult(target.getId(), target.getStatus(), target.getStatusMemo(), target.getPaidAt(),
                 target.getStatusChangedAt(), target.getStatusChangedByMembershipId(), transactionId);
     }
-    private String snapshot(FeeItem item) { return "{\"title\":\"" + item.getTitle().replace("\"", "'") + "\",\"dueDate\":\"" + item.getDueDate() + "\"}"; }
     private String deletionSnapshot(FeeItem item) {
         String categories = feeCategoryRepository.findAllByFeeItemIdOrderByDisplayOrderAsc(item.getId()).stream()
                 .map(category -> "{\"name\":\"" + category.getName().replace("\"", "'") + "\",\"amount\":\"" + category.getAmount() + "\"}")

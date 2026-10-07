@@ -3,6 +3,8 @@ package com.dongbang.finance.application;
 import com.dongbang.finance.domain.*;
 import com.dongbang.finance.domain.repository.FeeItemRepository;
 import com.dongbang.finance.domain.repository.FeeTargetRepository;
+import com.dongbang.finance.domain.repository.FeeCategoryRepository;
+import com.dongbang.finance.domain.repository.FinancialTransactionRepository;
 import com.dongbang.finance.exception.FinanceErrorCode;
 import com.dongbang.global.exception.GeneralException;
 import com.dongbang.global.response.code.GeneralErrorCode;
@@ -29,6 +31,8 @@ import static org.mockito.Mockito.*;
 class FeeDetailQueryServiceTest {
     @Mock FeeItemRepository items;
     @Mock FeeTargetRepository targets;
+    @Mock FeeCategoryRepository categories;
+    @Mock FinancialTransactionRepository transactions;
     @Mock MembershipAccessFacade memberships;
     @Mock OrganizationAccessFacade organizations;
     @InjectMocks FeeDetailQueryService service;
@@ -43,6 +47,9 @@ class FeeDetailQueryServiceTest {
         reverted.changeStatus(FeeTargetStatus.PAID, null, 9L, Instant.now());
         reverted.changeStatus(FeeTargetStatus.UNPAID, null, 9L, Instant.now());
         when(targets.findAllByFeeItemId(201L)).thenReturn(List.of(paid, unpaid, reverted));
+        var category = new FeeCategory(201L, "정기 회비", new BigDecimal("40000"), 0);
+        ReflectionTestUtils.setField(category, "id", 1L);
+        when(categories.findAllByFeeItemIdOrderByDisplayOrderAsc(201L)).thenReturn(List.of(category));
 
         var result = service.detail(1L, 7L, 201L);
 
@@ -53,6 +60,11 @@ class FeeDetailQueryServiceTest {
         assertThat(result.staffSummary().unpaidCount()).isEqualTo(2);
         assertThat(result.staffSummary().collectedAmount()).isEqualByComparingTo("40000.50");
         assertThat(result.staffSummary().expectedAmount()).isEqualByComparingTo("70001.00");
+        assertThat(result.editDetails().paymentAccount().accountNumber()).isEqualTo("123");
+        assertThat(result.editDetails().categoriesEditable()).isFalse();
+        assertThat(result.editDetails().categories()).hasSize(1);
+        assertThat(result.editDetails().categories().getFirst().targets()).hasSize(3);
+        assertThat(result.editDetails().categories().getFirst().targets().getFirst().amountDue()).isEqualByComparingTo("40000.50");
         verify(targets, never()).findByFeeItemIdAndMembershipId(anyLong(), anyLong());
     }
 
@@ -79,6 +91,7 @@ class FeeDetailQueryServiceTest {
         assertThat(result.myPayment().amountDue()).isEqualByComparingTo("20000");
         assertThat(result.myPayment().status()).isEqualTo(FeeTargetStatus.PAID);
         assertThat(result.myPayment().paidAt()).isEqualTo(paidAt);
+        assertThat(result.editDetails()).isNull();
         verify(targets, never()).findAllByFeeItemId(anyLong());
     }
 

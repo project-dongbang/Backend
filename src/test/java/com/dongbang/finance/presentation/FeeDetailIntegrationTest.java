@@ -14,7 +14,9 @@ import java.util.UUID;
 
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @Tag("integration")
@@ -76,7 +78,40 @@ class FeeDetailIntegrationTest {
                 .andExpect(jsonPath("$.result.staffSummary.paidCount").value(1))
                 .andExpect(jsonPath("$.result.staffSummary.collectedAmount").value(40000))
                 .andExpect(jsonPath("$.result.staffSummary.expectedAmount").value(60000))
+                .andExpect(jsonPath("$.result.editDetails.paymentAccount.accountNumber").value("123"))
+                .andExpect(jsonPath("$.result.editDetails.categories[0].targets.length()").value(2))
+                .andExpect(jsonPath("$.result.editDetails.categoriesEditable").value(false))
                 .andExpect(jsonPath("$.result.myPayment").value(nullValue()));
+    }
+
+    @Test
+    void staffCanReplaceUnpaidCategoriesAndTargets() throws Exception {
+        jdbc.update("UPDATE memberships SET role = 'ADMIN' WHERE membership_id = ?", membershipId);
+        jdbc.update("UPDATE fee_targets SET status = 'UNPAID' WHERE fee_item_id = ?", feeItemId);
+        mvc.perform(patch(path()).with(user(userId.toString()).roles("USER")).with(csrf())
+                        .contentType("application/json").content("""
+                                {"title":"수정 회비","categories":[{"name":"새 분류","amount":50000,"targetMembershipIds":[%d]}]}
+                                """.formatted(membershipId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.expectedAmount").value(50000));
+        mvc.perform(get(path()).with(user(userId.toString()).roles("USER")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.editDetails.categories[0].name").value("새 분류"))
+                .andExpect(jsonPath("$.result.editDetails.categories[0].targets[0].membershipId").value(membershipId))
+                .andExpect(jsonPath("$.result.staffSummary.targetCount").value(1));
+    }
+
+    @Test
+    void staffCannotReplaceCategoriesWithPaidTargets() throws Exception {
+        jdbc.update("UPDATE memberships SET role = 'ADMIN' WHERE membership_id = ?", membershipId);
+        mvc.perform(patch(path()).with(user(userId.toString()).roles("USER")).with(csrf())
+                        .contentType("application/json").content("""
+                                {"categories":[{"name":"새 분류","amount":50000,"targetMembershipIds":[%d]}]}
+                                """.formatted(membershipId)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("FEE_409_004"));
+        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM fee_categories WHERE fee_item_id = ?", Integer.class, feeItemId);
+        org.assertj.core.api.Assertions.assertThat(count).isEqualTo(1);
     }
 
     private String path() {
