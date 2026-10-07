@@ -28,7 +28,8 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             ApiSecurityExceptionHandler apiSecurityExceptionHandler,
-            ObjectProvider<JwtAuthenticationFilter> jwtAuthenticationFilterProvider
+            ObjectProvider<JwtAuthenticationFilter> jwtAuthenticationFilterProvider,
+            ObjectProvider<AuthProperties> authPropertiesProvider
     ) throws Exception {
         http
                 .authorizeHttpRequests(auth -> auth
@@ -40,6 +41,7 @@ public class SecurityConfig {
                                 "/v3/api-docs/**"
                         ).permitAll()
                         .requestMatchers("/api/v1/auth/oauth/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/auth/csrf").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/refresh", "/api/v1/auth/logout").permitAll()
                         .requestMatchers("/api/v1/auth/me", "/api/v1/auth/onboarding").authenticated()
                         .requestMatchers("/api/v1/**").hasRole("USER")
@@ -52,9 +54,17 @@ public class SecurityConfig {
                 .exceptionHandling(errors -> errors
                         .authenticationEntryPoint(apiSecurityExceptionHandler)
                         .accessDeniedHandler(apiSecurityExceptionHandler))
-                .csrf(csrf -> csrf
-                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                        .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler()));
+                .csrf(csrf -> {
+                    CookieCsrfTokenRepository csrfTokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+                    AuthProperties properties = authPropertiesProvider.getIfAvailable();
+                    boolean secure = properties != null && properties.cookieSecure();
+                    csrfTokenRepository.setCookieCustomizer(cookie -> cookie
+                            .secure(secure)
+                            .sameSite(secure ? "None" : "Lax")
+                            .path("/"));
+                    csrf.csrfTokenRepository(csrfTokenRepository)
+                            .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler());
+                });
 
         jwtAuthenticationFilterProvider.ifAvailable(filter ->
                 http.addFilterBefore(filter, UsernamePasswordAuthenticationFilter.class));

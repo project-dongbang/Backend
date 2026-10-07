@@ -62,7 +62,8 @@ class AuthApplicationServiceTest {
                 Duration.ofDays(14),
                 Duration.ofMinutes(5),
                 false,
-                List.of("http://localhost:5173/oauth/callback"),
+                List.of("http://localhost:5173/oauth/callback",
+                        "https://dongbang-frontend.vercel.app/auth/callback"),
                 null,
                 null
         );
@@ -76,6 +77,23 @@ class AuthApplicationServiceTest {
                 tokenHashService,
                 properties
         );
+    }
+
+    @Test
+    @DisplayName("허용된 프론트 콜백 주소만 OAuth 완료 후 리다이렉트 대상으로 사용한다")
+    void createAuthorizationValidatesFrontendCallback() {
+        String callback = "https://dongbang-frontend.vercel.app/auth/callback";
+        URI providerUri = URI.create("https://accounts.google.com/o/oauth2/v2/auth?state=signed-state");
+        given(jwtTokenService.issueOAuthState(OAuthProvider.GOOGLE, callback))
+                .willReturn("signed-state");
+        given(providerRegistry.get(OAuthProvider.GOOGLE)).willReturn(oauthProviderClient);
+        given(oauthProviderClient.createAuthorizationUri("signed-state")).willReturn(providerUri);
+
+        assertThat(authService.createAuthorization(OAuthProvider.GOOGLE, callback).authorizationUri())
+                .isEqualTo(providerUri);
+        assertThatThrownBy(() -> authService.createAuthorization(
+                OAuthProvider.GOOGLE, "https://untrusted.example/auth/callback"))
+                .isInstanceOf(GeneralException.class);
     }
 
     @Test
