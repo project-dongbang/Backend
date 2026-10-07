@@ -54,7 +54,6 @@ services:
       AWS_S3_BUCKET: ${AWS_S3_BUCKET:?Set AWS_S3_BUCKET in .env}
       AWS_REGION: ${AWS_REGION:-ap-northeast-2}
       AWS_S3_ENDPOINT: ${AWS_S3_ENDPOINT:-}
-      AWS_S3_CUSTOM_DOMAIN: ${AWS_S3_CUSTOM_DOMAIN:-}
       AWS_S3_URL_TTL: ${AWS_S3_URL_TTL:-PT15M}
       RECEIPT_OCR_URL: ${RECEIPT_OCR_URL:-http://ocr:8000}
     ports:

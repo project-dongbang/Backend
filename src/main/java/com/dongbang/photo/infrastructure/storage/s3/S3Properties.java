@@ -26,6 +26,5 @@ public class S3Properties {
     @NotBlank
     private String region = "ap-northeast-2";
     private String endpoint;
-    private String customDomain;
     private Duration urlTtl = Duration.ofMinutes(15);
 }

@@ -79,10 +79,6 @@ public class S3FileStorageService implements FileStorageService {
         if (!StringUtils.hasText(storageKey)) {
             return null;
         }
-        if (StringUtils.hasText(s3Properties.getCustomDomain())) {
-            String domain = s3Properties.getCustomDomain().replaceAll("/$", "");
-            return String.format("%s/%s", domain, storageKey);
-        }
         GetObjectRequest getRequest = GetObjectRequest.builder()
                 .bucket(s3Properties.getBucket())
                 .key(storageKey)

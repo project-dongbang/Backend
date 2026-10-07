@@ -86,5 +86,4 @@ app:
       bucket: ${AWS_S3_BUCKET:}
       region: ${AWS_REGION:ap-northeast-2}
       endpoint: ${AWS_S3_ENDPOINT:}
-      custom-domain: ${AWS_S3_CUSTOM_DOMAIN:}
       url-ttl: ${AWS_S3_URL_TTL:PT15M}

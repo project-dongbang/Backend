@@ -168,6 +168,8 @@ chmod 600 .env
 - `s3:GetObject`
 - `s3:DeleteObject`
 
-권한 범위는 버킷 전체가 아니라 `organizations/*/receipts/*`, `organizations/*/profiles/*` 객체와 해당 prefix의 목록 조회로 제한합니다.
+객체 권한은 실제 업로드 경로인 `organizations/*/receipts/*`, `organizations/*/photos/*`, `organizations/*/ledger-evidence/*`, `users/*/profile-images/*`로 제한합니다. 애플리케이션은 S3 목록 조회를 사용하지 않으므로 `s3:ListBucket` 권한은 필요하지 않습니다.
 
-GitHub 저장소에는 `EC2_HOST`, `EC2_USER`, `EC2_SSH_KEY` Actions Secret이 필요합니다. 운영 S3 버킷은 비공개로 유지하고, 공개 조회가 필요하면 `AWS_S3_CUSTOM_DOMAIN`에 CloudFront 도메인을 설정합니다.
+GitHub 저장소에는 `EC2_HOST`, `EC2_USER`, `EC2_SSH_KEY` Actions Secret이 필요합니다. 운영 S3 버킷은 비공개로 유지합니다. 이미지 URL은 인증된 API 응답에서 설정된 `AWS_S3_URL_TTL` 동안만 유효한 S3 서명 URL로 제공합니다. 기존 EC2 `.env`에 `AWS_S3_CUSTOM_DOMAIN`이 있다면 제거하세요. 이 값은 더 이상 사용하지 않습니다.
+
+기존 CloudFront 배포가 같은 객체를 서명 없는 URL로 제공하고 있다면 애플리케이션 수정만으로 이미 공유된 CDN URL을 차단할 수 없습니다. 해당 배포의 비인증 조회가 거부되는지 확인하고, 필요한 경우 CloudFront 서명 URL/쿠키를 적용하거나 공개 경로를 중단하세요. S3 퍼블릭 액세스 차단과 CloudFront의 S3 원본 접근 제어도 함께 확인해야 합니다.
