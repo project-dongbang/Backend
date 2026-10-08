@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.math.BigDecimal;
 
 @Entity
 @Table(name = "organizations")
@@ -31,6 +32,21 @@ public class Organization extends BaseTimeEntity {
 
     @Column(name = "logo_url", length = 500)
     private String logoUrl;
+
+    @Column(name = "operating_semester", length = 6)
+    private String operatingSemester;
+
+    @Column(name = "default_fee_amount", precision = 12, scale = 0)
+    private BigDecimal defaultFeeAmount;
+
+    @Column(name = "fee_bank_name", length = 50)
+    private String feeBankName;
+
+    @Column(name = "fee_account_number", length = 50)
+    private String feeAccountNumber;
+
+    @Column(name = "fee_account_holder", length = 100)
+    private String feeAccountHolder;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
@@ -58,6 +74,21 @@ public class Organization extends BaseTimeEntity {
         }
         if (logoUrl != null) {
             this.logoUrl = logoUrl;
+        }
+    }
+
+    public void updateSettings(String operatingSemester, BigDecimal defaultFeeAmount,
+                               String bankName, String accountNumber, String accountHolder) {
+        if (operatingSemester != null) {
+            this.operatingSemester = operatingSemester;
+        }
+        if (defaultFeeAmount != null) {
+            this.defaultFeeAmount = defaultFeeAmount;
+        }
+        if (bankName != null) {
+            this.feeBankName = bankName;
+            this.feeAccountNumber = accountNumber;
+            this.feeAccountHolder = accountHolder;
         }
     }
 

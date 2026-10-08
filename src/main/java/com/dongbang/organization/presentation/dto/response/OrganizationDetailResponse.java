@@ -9,6 +9,7 @@ public record OrganizationDetailResponse(
         String description,
         String logoUrl,
         long memberCount,
-        Instant createdAt
+        Instant createdAt,
+        OrganizationSettingsResponse settings
 ) {
 }

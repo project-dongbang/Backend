@@ -9,6 +9,7 @@ import com.dongbang.organization.domain.repository.MembershipRepository;
 import com.dongbang.organization.domain.repository.OrganizationRepository;
 import com.dongbang.organization.exception.OrganizationErrorCode;
 import com.dongbang.organization.presentation.dto.response.*;
+import com.dongbang.organization.presentation.dto.OrganizationPaymentAccount;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,6 +51,9 @@ public class OrganizationQueryService {
 
         long memberCount = membershipRepository.findAllByOrganizationIdAndStatus(organizationId, MembershipStatus.ACTIVE).size();
 
+        OrganizationPaymentAccount account = organization.getFeeBankName() == null ? null
+                : new OrganizationPaymentAccount(organization.getFeeBankName(),
+                        organization.getFeeAccountNumber(), organization.getFeeAccountHolder());
         return new OrganizationDetailResponse(
                 organization.getId(),
                 organization.getName(),
@@ -57,7 +61,9 @@ public class OrganizationQueryService {
                 organization.getDescription(),
                 organization.getLogoUrl(),
                 memberCount,
-                organization.getCreatedAt()
+                organization.getCreatedAt(),
+                new OrganizationSettingsResponse(organization.getOperatingSemester(),
+                        organization.getDefaultFeeAmount(), account)
         );
     }
 

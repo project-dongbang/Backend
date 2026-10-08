@@ -42,9 +42,9 @@ public class OrganizationController {
     }
 
     // 2. 동아리 수정
-    @Operation(summary = "동아리 정보 수정", description = "대표가 동아리 이름과 기본 정보를 수정합니다.")
+    @Operation(summary = "동아리 정보 수정", description = "운영진은 기본 정보를 수정할 수 있습니다. 운영 학기(YYYY-1/2), 기본 회비, 계좌를 포함한 settings는 대표만 수정할 수 있으며 기존 납부 항목에는 소급 적용되지 않습니다.")
     @PatchMapping("/api/v1/organizations/{organizationId}")
-    @ApiErrorExamples(value = OrganizationErrorCode.class, names = {"STAFF_REQUIRED", "ORGANIZATION_NOT_FOUND"})
+    @ApiErrorExamples(value = OrganizationErrorCode.class, names = {"STAFF_REQUIRED", "OWNER_REQUIRED", "ORGANIZATION_NOT_FOUND"})
     public ApiResponse<Void> updateOrganization(
             @Parameter(hidden = true) @CurrentUserId Long userId,
             @Parameter(description = "동아리 ID") @PathVariable Long organizationId,
@@ -91,6 +91,21 @@ public class OrganizationController {
     ) {
         MemberListResponse response = queryService.getMembers(userId, organizationId, status);
         return ApiResponse.onSuccess(GeneralSuccessCode.OK, response);
+    }
+
+    @Operation(summary = "멤버 운영 정보 수정", description = "활동 상태(ACTIVE/INACTIVE), 기수, 직책을 부분 수정합니다. 빈 직책은 null로 초기화합니다. 탈퇴·강퇴, 역할 변경은 각각 전용 API를 사용합니다.")
+    @PatchMapping("/api/v1/organizations/{organizationId}/members/{memberId}")
+    @ApiErrorExamples(value = OrganizationErrorCode.class,
+            names = {"STAFF_REQUIRED", "OWNER_REQUIRED", "ORGANIZATION_NOT_FOUND", "MEMBER_NOT_FOUND",
+                    "MEMBER_STATUS_NOT_EDITABLE", "OWNER_CANNOT_DEACTIVATE"})
+    public ApiResponse<MemberItemResponse> updateMemberInfo(
+            @Parameter(hidden = true) @CurrentUserId Long userId,
+            @Parameter(description = "동아리 ID") @PathVariable Long organizationId,
+            @Parameter(description = "멤버십 ID") @PathVariable Long memberId,
+            @Valid @RequestBody UpdateMemberInfoRequest request
+    ) {
+        return ApiResponse.onSuccess(GeneralSuccessCode.OK,
+                commandService.updateMemberInfo(userId, organizationId, memberId, request));
     }
 
     // 6. 동아리 회원 권한 변경
@@ -168,7 +183,7 @@ public class OrganizationController {
     }
 
     // 12. 동아리 상세조회
-    @Operation(summary = "동아리 상세 조회", description = "동아리의 기본 정보와 현재 상태를 조회합니다.")
+    @Operation(summary = "동아리 상세 조회", description = "동아리 기본 정보와 운영 설정을 조회합니다. 설정하지 않은 학기·회비·계좌는 null입니다.")
     @GetMapping("/api/v1/organizations/{organizationId}")
     @ApiErrorExamples(value = OrganizationErrorCode.class, names = {"MEMBER_REQUIRED", "ORGANIZATION_NOT_FOUND"})
     public ApiResponse<OrganizationDetailResponse> getOrganizationDetail(

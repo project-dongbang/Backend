@@ -85,6 +85,18 @@ public class Membership {
         this.role = newRole;
     }
 
+    public void updateActivityStatus(MembershipStatus status) {
+        this.status = status;
+    }
+
+    public void updateGeneration(String generation) {
+        this.generation = generation;
+    }
+
+    public void updatePosition(String position) {
+        this.position = position;
+    }
+
     public void linkUser(Long userId, Instant linkedAt) {
         if (this.userId == null) {
             this.userId = userId;

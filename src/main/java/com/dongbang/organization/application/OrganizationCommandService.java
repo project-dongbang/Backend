@@ -1,6 +1,7 @@
 package com.dongbang.organization.application;
 
 import com.dongbang.global.exception.GeneralException;
+import com.dongbang.global.response.code.GeneralErrorCode;
 import com.dongbang.organization.domain.*;
 import com.dongbang.organization.domain.repository.InvitationRepository;
 import com.dongbang.organization.domain.repository.MembershipRepository;
@@ -10,6 +11,7 @@ import com.dongbang.organization.presentation.dto.request.*;
 import com.dongbang.organization.presentation.dto.response.CreateOrganizationResponse;
 import com.dongbang.organization.presentation.dto.response.InvitationResponse;
 import com.dongbang.organization.presentation.dto.response.JoinOrganizationResponse;
+import com.dongbang.organization.presentation.dto.response.MemberItemResponse;
 import com.dongbang.auth.infrastructure.token.TokenHashService;
 import com.dongbang.user.application.facade.UserAccountFacade;
 import com.dongbang.user.application.facade.UserAccountSummary;
@@ -60,10 +62,69 @@ public class OrganizationCommandService {
     }
 
     public void updateOrganization(Long userId, Long organizationId, UpdateOrganizationRequest request) {
-        validateStaff(organizationId, userId);
+        Membership editor = validateStaff(organizationId, userId);
+
+        UpdateOrganizationSettingsRequest settings = request.settings();
+        if (settings != null) {
+            if (!editor.getRole().isOwner()) {
+                throw new GeneralException(OrganizationErrorCode.OWNER_REQUIRED);
+            }
+            if (settings.operatingSemester() == null && settings.defaultFeeAmount() == null
+                    && settings.paymentAccount() == null) {
+                throw new GeneralException(GeneralErrorCode.VALIDATION_ERROR);
+            }
+        }
 
         Organization organization = findActiveOrganization(organizationId);
         organization.updateInfo(request.name(), request.description(), request.logoUrl());
+        if (settings != null) {
+            var account = settings.paymentAccount();
+            organization.updateSettings(settings.operatingSemester(), settings.defaultFeeAmount(),
+                    account != null ? account.bankName().trim() : null,
+                    account != null ? account.accountNumber().trim() : null,
+                    account != null ? account.accountHolder().trim() : null);
+        }
+    }
+
+    public MemberItemResponse updateMemberInfo(Long userId, Long organizationId, Long targetMemberId,
+                                               UpdateMemberInfoRequest request) {
+        Membership editor = validateStaff(organizationId, userId);
+        findActiveOrganization(organizationId);
+        if (request.status() == null && request.generation() == null && request.position() == null) {
+            throw new GeneralException(GeneralErrorCode.VALIDATION_ERROR);
+        }
+        Membership target = membershipRepository.findById(targetMemberId)
+                .filter(member -> member.getOrganization().getId().equals(organizationId))
+                .orElseThrow(() -> new GeneralException(OrganizationErrorCode.MEMBER_NOT_FOUND));
+        if (target.getStatus() == MembershipStatus.LEFT || target.getStatus() == MembershipStatus.EXPELLED) {
+            throw new GeneralException(OrganizationErrorCode.MEMBER_STATUS_NOT_EDITABLE);
+        }
+        if (target.getRole().isOwner()) {
+            if (!editor.getRole().isOwner()) {
+                throw new GeneralException(OrganizationErrorCode.OWNER_REQUIRED);
+            }
+            if (request.status() == UpdateMemberInfoRequest.ActivityStatus.INACTIVE) {
+                throw new GeneralException(OrganizationErrorCode.OWNER_CANNOT_DEACTIVATE);
+            }
+        }
+
+        if (request.status() != null) {
+            target.updateActivityStatus(request.status().toMembershipStatus());
+        }
+        if (request.generation() != null) {
+            String generation = request.generation().trim();
+            if (generation.isEmpty()) {
+                throw new GeneralException(GeneralErrorCode.VALIDATION_ERROR);
+            }
+            target.updateGeneration(generation);
+        }
+        if (request.position() != null) {
+            String position = request.position().trim();
+            target.updatePosition(position.isEmpty() ? null : position);
+        }
+        return new MemberItemResponse(target.getId(), target.getUserId(), target.getMemberName(),
+                target.getStudentNumber(), target.getGeneration(), target.getPosition(), target.getRole(),
+                target.getStatus(), target.getJoinedAt());
     }
 
     public void deleteOrganization(Long userId, Long organizationId) {
