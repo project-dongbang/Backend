@@ -29,10 +29,9 @@ public class OrganizationController {
     private final OrganizationQueryService queryService;
 
     // 1. 동아리 생성
-    @Operation(summary = "동아리 생성", description = "새 동아리를 만들고 요청한 사용자를 대표로 등록합니다.")
+    @Operation(summary = "동아리 생성", description = "새 동아리를 만들고 요청한 사용자를 대표로 등록합니다. 슬러그는 서버가 생성합니다.")
     @PostMapping("/api/v1/organizations")
     @ResponseStatus(HttpStatus.CREATED)
-    @ApiErrorExamples(value = OrganizationErrorCode.class, names = {"SLUG_ALREADY_EXISTS"})
     public ApiResponse<CreateOrganizationResponse> createOrganization(
             @Parameter(hidden = true) @CurrentUserId Long userId,
             @Valid @RequestBody CreateOrganizationRequest request

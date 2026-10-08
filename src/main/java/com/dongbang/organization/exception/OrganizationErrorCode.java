@@ -15,7 +15,6 @@ public enum OrganizationErrorCode implements BaseErrorCode {
     MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "ORG_404_003", "해당 회원이 동아리에 존재하지 않습니다."),
 
     ALREADY_JOINED_MEMBER(HttpStatus.CONFLICT, "ORG_409_001", "이미 해당 동아리에 가입된 회원입니다."),
-    SLUG_ALREADY_EXISTS(HttpStatus.CONFLICT, "ORG_409_002", "이미 사용 중인 동아리 슬러그입니다."),
     MEMBER_STATUS_NOT_EDITABLE(HttpStatus.CONFLICT, "ORG_409_003", "탈퇴하거나 강퇴된 회원 정보는 수정할 수 없습니다."),
 
     INVALID_DELEGATION_TARGET(HttpStatus.BAD_REQUEST, "ORG_400_001", "운영진(ADMIN)에게만 대표 권한을 위임할 수 있습니다."),

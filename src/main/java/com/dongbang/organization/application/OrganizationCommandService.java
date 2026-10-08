@@ -35,13 +35,9 @@ public class OrganizationCommandService {
     private final TokenHashService tokenHashService;
 
     public CreateOrganizationResponse createOrganization(Long userId, CreateOrganizationRequest request) {
-        if (organizationRepository.existsBySlug(request.slug())) {
-            throw new GeneralException(OrganizationErrorCode.SLUG_ALREADY_EXISTS);
-        }
-
         Organization organization = Organization.builder()
                 .name(request.name())
-                .slug(request.slug())
+                .slug("org-" + UUID.randomUUID().toString().replace("-", ""))
                 .description(request.description())
                 .logoUrl(request.logoUrl())
                 .build();

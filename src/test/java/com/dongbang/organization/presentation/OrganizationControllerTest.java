@@ -60,9 +60,9 @@ class OrganizationControllerTest {
     @DisplayName("동아리 생성 API 호출 성공")
     void createOrganization() throws Exception {
         CreateOrganizationRequest request = new CreateOrganizationRequest(
-                "동방 개발팀", "dongbang-dev", "설명", null
+                "동방 개발팀", "설명", null
         );
-        CreateOrganizationResponse response = new CreateOrganizationResponse(1L, "dongbang-dev");
+        CreateOrganizationResponse response = new CreateOrganizationResponse(1L, "org-0123456789abcdef0123456789abcdef");
 
         given(commandService.createOrganization(eq(1L), any(CreateOrganizationRequest.class)))
                 .willReturn(response);
@@ -76,7 +76,7 @@ class OrganizationControllerTest {
                 .andExpect(jsonPath("$.isSuccess").value(true))
                 .andExpect(jsonPath("$.code").value("COMMON_201_001"))
                 .andExpect(jsonPath("$.result.organizationId").value(1))
-                .andExpect(jsonPath("$.result.slug").value("dongbang-dev"));
+                .andExpect(jsonPath("$.result.slug").value("org-0123456789abcdef0123456789abcdef"));
     }
 
     @Test

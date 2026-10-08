@@ -27,6 +27,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
@@ -56,23 +57,15 @@ class OrganizationCommandServiceTest {
     class CreateOrganizationTest {
 
         @Test
-        @DisplayName("성공: 슬러그가 중복되지 않으면 동아리와 OWNER 멤버십이 생성된다")
+        @DisplayName("성공: 서버가 슬러그를 생성하고 동아리와 OWNER 멤버십을 저장한다")
         void success() {
             // given
             Long userId = 1L;
             CreateOrganizationRequest request = new CreateOrganizationRequest(
-                    "동방 개발팀", "dongbang-dev", "동아리 설명", "https://logo.png"
+                    "동방 개발팀", "동아리 설명", "https://logo.png"
             );
-
-            Organization savedOrg = Organization.builder()
-                    .name(request.name())
-                    .slug(request.slug())
-                    .description(request.description())
-                    .logoUrl(request.logoUrl())
-                    .build();
-
-            given(organizationRepository.existsBySlug("dongbang-dev")).willReturn(false);
-            given(organizationRepository.save(any(Organization.class))).willReturn(savedOrg);
+            given(organizationRepository.save(any(Organization.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
             given(userAccountFacade.getAccount(userId)).willReturn(
                     new com.dongbang.user.application.facade.UserAccountSummary(
                             userId, "홍길동", "20240001", "컴퓨터공학과", "test@dongbang.com",
@@ -84,23 +77,11 @@ class OrganizationCommandServiceTest {
             CreateOrganizationResponse response = organizationCommandService.createOrganization(userId, request);
 
             // then
-            assertThat(response.slug()).isEqualTo("dongbang-dev");
+            assertThat(response.slug()).matches("org-[0-9a-f]{32}");
+            verify(organizationRepository).save(argThat(
+                    organization -> organization.getSlug().equals(response.slug())
+            ));
             verify(membershipRepository).save(any(Membership.class));
-        }
-
-        @Test
-        @DisplayName("실패: 이미 존재하는 슬러그인 경우 SLUG_ALREADY_EXISTS 예외가 발생한다")
-        void fail_slug_duplicate() {
-            // given
-            CreateOrganizationRequest request = new CreateOrganizationRequest(
-                    "동방 개발팀", "dongbang-dev", null, null
-            );
-            given(organizationRepository.existsBySlug("dongbang-dev")).willReturn(true);
-
-            // when & then
-            assertThatThrownBy(() -> organizationCommandService.createOrganization(1L, request))
-                    .isInstanceOf(GeneralException.class)
-                    .hasFieldOrPropertyWithValue("errorCode", OrganizationErrorCode.SLUG_ALREADY_EXISTS);
         }
     }
 
