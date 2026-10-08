@@ -134,8 +134,8 @@ class DashboardQueryServiceTest {
 
             given(membershipAccessFacade.isActiveMember(orgId, userId)).willReturn(true);
             given(organizationRepository.findById(orgId)).willReturn(Optional.of(org));
-            given(attendancePort.getMemberAttendanceRate(orgId, userId)).willReturn(85.0);
-            given(attendancePort.getMemberAttendanceCount(orgId, userId)).willReturn(6);
+            given(attendancePort.getMemberAttendanceStats(orgId, userId))
+                    .willReturn(new DashboardAttendancePort.MemberAttendanceStats(85.0, 6));
             given(financePort.getMemberUnpaidFeeCount(orgId, userId)).willReturn(0);
             given(membershipAccessFacade.getActiveMemberCount(orgId)).willReturn(64L);
             given(eventPort.countThisMonthEvents(orgId)).willReturn(8);
