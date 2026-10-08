@@ -1,6 +1,7 @@
 package com.dongbang.photo.application;
 
 import com.dongbang.global.exception.GeneralException;
+import com.dongbang.global.response.code.GeneralErrorCode;
 import com.dongbang.organization.application.facade.MembershipAccessFacade;
 import com.dongbang.organization.application.facade.MembershipSummary;
 import com.dongbang.organization.domain.MembershipRole;
@@ -127,6 +128,19 @@ class PhotoCommandServiceTest {
             assertThatThrownBy(() -> photoCommandService.createPhoto(orgId, userId, file, "제목"))
                     .isInstanceOf(GeneralException.class)
                     .hasFieldOrPropertyWithValue("errorCode", PhotoErrorCode.STAFF_REQUIRED);
+        }
+
+        @Test
+        @DisplayName("실패: 제목이 200자를 넘으면 파일을 저장하지 않고 검증 오류를 반환한다")
+        void createPhoto_titleTooLong_rejectsBeforeStorage() {
+            MockMultipartFile file = new MockMultipartFile(
+                    "file", "mt.jpg", "image/jpeg", "image-content".getBytes());
+            given(membershipAccessFacade.isStaff(orgId, userId)).willReturn(true);
+
+            assertThatThrownBy(() -> photoCommandService.createPhoto(orgId, userId, file, "가".repeat(201)))
+                    .isInstanceOf(GeneralException.class)
+                    .hasFieldOrPropertyWithValue("errorCode", GeneralErrorCode.VALIDATION_ERROR);
+            verifyNoInteractions(fileStorageService, uploadedFileRepository, photoRepository);
         }
     }
 

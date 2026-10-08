@@ -1,6 +1,8 @@
 package com.dongbang.photo.presentation;
 
 import com.dongbang.global.config.SecurityConfig;
+import com.dongbang.global.exception.GeneralException;
+import com.dongbang.global.response.code.GeneralErrorCode;
 import com.dongbang.global.config.WebMvcConfig;
 import com.dongbang.global.security.ApiSecurityExceptionHandler;
 import com.dongbang.photo.application.PhotoCommandService;
@@ -119,6 +121,23 @@ class PhotoControllerTest {
                 .andExpect(jsonPath("$.isSuccess").value(true))
                 .andExpect(jsonPath("$.result.photoId").value(20))
                 .andExpect(jsonPath("$.result.title").value("새 사진"));
+    }
+
+    @Test
+    @DisplayName("사진 등록 제목이 200자를 넘으면 400 검증 오류를 반환한다")
+    void uploadPhoto_titleTooLong() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "mt.jpg", "image/jpeg", "dummy-content".getBytes());
+        given(commandService.createPhoto(eq(orgId), eq(1L), any(), eq("가".repeat(201))))
+                .willThrow(new GeneralException(GeneralErrorCode.VALIDATION_ERROR));
+
+        mvc.perform(multipart("/api/v1/organizations/{organizationId}/photos", orgId)
+                        .with(user("1").roles("USER"))
+                        .with(csrf())
+                        .file(file)
+                        .param("title", "가".repeat(201)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_400_002"));
     }
 
     @Test

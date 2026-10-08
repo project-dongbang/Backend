@@ -9,6 +9,7 @@ import com.dongbang.photo.application.PhotoCommandService;
 import com.dongbang.photo.application.PhotoQueryService;
 import com.dongbang.photo.exception.PhotoErrorCode;
 import com.dongbang.photo.presentation.dto.request.CreatePhotoRequest;
+import com.dongbang.photo.presentation.dto.request.PhotoMultipartRequest;
 import com.dongbang.photo.presentation.dto.request.UpdatePhotoRequest;
 import com.dongbang.photo.presentation.dto.response.PhotoCursorResponse;
 import com.dongbang.photo.presentation.dto.response.PhotoDetailResponse;
@@ -59,8 +60,14 @@ public class PhotoController {
 
     // 3. 사진첩 사진 등록 (Multipart 직접 업로드)
     @PostMapping(value = "/api/v1/organizations/{organizationId}/photos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Operation(summary = "사진 업로드", description = "이미지 파일을 업로드해 동아리 사진첩에 등록합니다.")
-    @ApiErrorExamples(value = GeneralErrorCode.class, names = {"UNSUPPORTED_MEDIA_TYPE"})
+    @Operation(summary = "사진 등록", description = "multipart 파일 직접 업로드 또는 기존 업로드 파일 ID로 사진을 등록합니다.",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true, content = {
+                    @io.swagger.v3.oas.annotations.media.Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+                            schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = PhotoMultipartRequest.class)),
+                    @io.swagger.v3.oas.annotations.media.Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = CreatePhotoRequest.class))
+            }))
+    @ApiErrorExamples(value = GeneralErrorCode.class, names = {"UNSUPPORTED_MEDIA_TYPE", "VALIDATION_ERROR"})
     @ApiErrorExamples(value = PhotoErrorCode.class, names = {"STAFF_REQUIRED", "MEMBER_REQUIRED", "FILE_EMPTY", "INVALID_FILE_TYPE", "FILE_UPLOAD_FAILED"})
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<PhotoDetailResponse> uploadPhoto(
@@ -75,7 +82,13 @@ public class PhotoController {
 
     // 3-1. 사진첩 사진 등록 (기 업로드 파일 ID 연결 등록)
     @PostMapping(value = "/api/v1/organizations/{organizationId}/photos", consumes = MediaType.APPLICATION_JSON_VALUE)
-    @Operation(summary = "업로드된 파일로 사진 등록", description = "기존 업로드 파일 ID를 연결해 사진첩에 등록합니다.")
+    @Operation(summary = "사진 등록", description = "multipart 파일 직접 업로드 또는 기존 업로드 파일 ID로 사진을 등록합니다.",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true, content = {
+                    @io.swagger.v3.oas.annotations.media.Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+                            schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = PhotoMultipartRequest.class)),
+                    @io.swagger.v3.oas.annotations.media.Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = CreatePhotoRequest.class))
+            }))
     @ApiErrorExamples(value = PhotoErrorCode.class, names = {"STAFF_REQUIRED", "MEMBER_REQUIRED", "FILE_NOT_FOUND"})
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<PhotoDetailResponse> createPhotoWithFileId(
@@ -103,7 +116,10 @@ public class PhotoController {
 
     @PatchMapping(value = "/api/v1/organizations/{organizationId}/photos/{photoId}/image",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Operation(summary = "사진 이미지 교체", description = "운영진이 새 이미지 파일로 기존 사진을 교체합니다. title을 함께 보내면 제목도 수정합니다.")
+    @Operation(summary = "사진 이미지 교체", description = "운영진이 새 이미지 파일로 기존 사진을 교체합니다. title을 함께 보내면 제목도 수정합니다.",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
+                    content = @io.swagger.v3.oas.annotations.media.Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+                            schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = PhotoMultipartRequest.class))))
     @ApiErrorExamples(value = GeneralErrorCode.class, names = {"UNSUPPORTED_MEDIA_TYPE", "VALIDATION_ERROR"})
     @ApiErrorExamples(value = PhotoErrorCode.class,
             names = {"STAFF_REQUIRED", "PHOTO_NOT_FOUND", "FILE_NOT_FOUND", "FILE_EMPTY", "INVALID_FILE_TYPE", "FILE_UPLOAD_FAILED"})

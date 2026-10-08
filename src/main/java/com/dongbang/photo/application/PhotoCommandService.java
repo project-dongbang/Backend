@@ -34,6 +34,7 @@ public class PhotoCommandService {
 
     public PhotoDetailResponse createPhoto(Long organizationId, Long userId, MultipartFile file, String title) {
         validateStaff(organizationId, userId);
+        validateTitle(title);
 
         MembershipSummary uploader = membershipAccessFacade.getMembershipSummary(organizationId, userId)
                 .orElseThrow(() -> new GeneralException(PhotoErrorCode.MEMBER_REQUIRED));
@@ -105,9 +106,7 @@ public class PhotoCommandService {
     public PhotoDetailResponse replacePhotoImage(Long organizationId, Long userId, Long photoId,
                                                  MultipartFile file, String title) {
         validateStaff(organizationId, userId);
-        if (title != null && title.length() > 200) {
-            throw new GeneralException(GeneralErrorCode.VALIDATION_ERROR);
-        }
+        validateTitle(title);
 
         Photo photo = photoRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(photoId, organizationId)
                 .orElseThrow(() -> new GeneralException(PhotoErrorCode.PHOTO_NOT_FOUND));
@@ -171,6 +170,12 @@ public class PhotoCommandService {
     private void validateStaff(Long organizationId, Long userId) {
         if (!membershipAccessFacade.isStaff(organizationId, userId)) {
             throw new GeneralException(PhotoErrorCode.STAFF_REQUIRED);
+        }
+    }
+
+    private void validateTitle(String title) {
+        if (title != null && title.length() > 200) {
+            throw new GeneralException(GeneralErrorCode.VALIDATION_ERROR);
         }
     }
 
