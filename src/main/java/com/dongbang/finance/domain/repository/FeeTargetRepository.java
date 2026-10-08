@@ -27,4 +27,22 @@ public interface FeeTargetRepository extends JpaRepository<FeeTarget, Long> {
     List<FeeTarget> findAllByMembershipIdAndStatus(Long membershipId, FeeTargetStatus status);
     long countByFeeItemId(Long feeItemId);
     long countByFeeItemIdAndStatus(Long feeItemId, FeeTargetStatus status);
+
+    @Query("""
+            select new com.dongbang.finance.domain.repository.DashboardFeeTotals(
+                count(target), coalesce(sum(case when target.status = com.dongbang.finance.domain.FeeTargetStatus.PAID
+                    then 1L else 0L end), 0L))
+            from FeeTarget target, FeeItem item
+            where target.feeItemId = item.id and item.organizationId = :organizationId
+            """)
+    DashboardFeeTotals dashboardTotals(@Param("organizationId") Long organizationId);
+
+    @Query("""
+            select count(target) from FeeTarget target, FeeItem item
+            where target.feeItemId = item.id and item.organizationId = :organizationId
+              and target.membershipId = :membershipId
+              and target.status = com.dongbang.finance.domain.FeeTargetStatus.UNPAID
+            """)
+    long countDashboardUnpaid(@Param("organizationId") Long organizationId,
+                              @Param("membershipId") Long membershipId);
 }

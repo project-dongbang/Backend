@@ -6,6 +6,7 @@ import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
@@ -53,4 +54,24 @@ public interface EventJpaRepository extends JpaRepository<Event, Long>, EventRep
             """)
     List<Event> findScheduledEventsStartingBetween(@Param("from") Instant from,
                                                    @Param("until") Instant until);
+
+    @Query("""
+            select count(e) from Event e
+            where e.organizationId = :organizationId and e.deletedAt is null
+              and e.status = com.dongbang.event.domain.EventStatus.SCHEDULED
+              and e.type = com.dongbang.event.domain.EventType.EVENT
+              and e.startsAt >= :from and e.startsAt < :until
+            """)
+    long countDashboardEvents(@Param("organizationId") Long organizationId,
+                              @Param("from") Instant from, @Param("until") Instant until);
+
+    @Query("""
+            select e from Event e
+            where e.organizationId = :organizationId and e.deletedAt is null
+              and e.status = com.dongbang.event.domain.EventStatus.SCHEDULED
+              and e.startsAt >= :now
+            order by e.startsAt asc, e.id asc
+            """)
+    List<Event> findDashboardUpcoming(@Param("organizationId") Long organizationId,
+                                      @Param("now") Instant now, Pageable pageable);
 }

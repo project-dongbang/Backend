@@ -56,13 +56,12 @@ public class DashboardQueryService {
 
         Organization org = findActiveOrganization(organizationId);
 
-        double myAttendanceRate = attendancePort.getMemberAttendanceRate(organizationId, userId);
-        int attendedEventCount = attendancePort.getMemberAttendanceCount(organizationId, userId);
+        var attendance = attendancePort.getMemberAttendanceStats(organizationId, userId);
         int unpaidFeeCount = financePort.getMemberUnpaidFeeCount(organizationId, userId);
 
         MemberPersonalStatsResponse myStats = new MemberPersonalStatsResponse(
-                myAttendanceRate,
-                attendedEventCount,
+                attendance.attendanceRate(),
+                attendance.attendedEventCount(),
                 unpaidFeeCount
         );
 
