@@ -12,6 +12,4 @@ public interface OrganizationJpaRepository extends JpaRepository<Organization, L
     @Override
     Optional<Organization> findBySlug(String slug);
 
-    @Override
-    boolean existsBySlug(String slug);
 }

@@ -8,5 +8,4 @@ public interface OrganizationRepository {
     Organization save(Organization organization);
     Optional<Organization> findById(Long id);
     Optional<Organization> findBySlug(String slug);
-    boolean existsBySlug(String slug);
 }
