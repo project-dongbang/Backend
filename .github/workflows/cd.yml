@@ -151,9 +151,32 @@ jobs:
 
             export IMAGE_NAME="${{ needs.verify_build_push.outputs.image_repository }}:${{ needs.verify_build_push.outputs.image_tag }}"
             export OCR_IMAGE_NAME="${{ needs.verify_build_push.outputs.ocr_repository }}:${{ needs.verify_build_push.outputs.image_tag }}"
+
+            # Keep the two newest SHA-tagged images per service for an immediate rollback.
+            # Docker refuses to remove an image referenced by any container.
+            prune_old_deploy_images() {
+              repository="$1"
+              docker image ls "$repository" --format '{{.Tag}}' \
+                | awk '/^sha-[0-9a-f]+$/ { print }' \
+                | while IFS= read -r tag; do
+                    created="$(docker image inspect --format '{{.Created}}' "$repository:$tag")"
+                    printf '%s %s\n' "$created" "$tag"
+                  done \
+                | sort -r \
+                | awk 'NR > 2 { print $2 }' \
+                | while IFS= read -r tag; do
+                    docker image rm "$repository:$tag" || true
+                  done
+            }
+
             docker compose -f compose.prod.yaml config --quiet
+            prune_old_deploy_images "${IMAGE_NAME%:*}"
+            prune_old_deploy_images "${OCR_IMAGE_NAME%:*}"
+            docker image prune -f
             docker compose -f compose.prod.yaml pull api ocr
             docker compose -f compose.prod.yaml up -d --remove-orphans --wait --wait-timeout 300
+            prune_old_deploy_images "${IMAGE_NAME%:*}"
+            prune_old_deploy_images "${OCR_IMAGE_NAME%:*}"
             docker image prune -f
 
             echo "Deployment completed: $IMAGE_NAME"
