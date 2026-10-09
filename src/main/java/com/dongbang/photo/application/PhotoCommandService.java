@@ -67,12 +67,17 @@ public class PhotoCommandService {
 
     public PhotoDetailResponse createPhotoWithFileId(Long organizationId, Long userId, Long uploadedFileId, String title) {
         validateStaff(organizationId, userId);
+        validateTitle(title);
 
         MembershipSummary uploader = membershipAccessFacade.getMembershipSummary(organizationId, userId)
                 .orElseThrow(() -> new GeneralException(PhotoErrorCode.MEMBER_REQUIRED));
 
         UploadedFile uploadedFile = uploadedFileRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(uploadedFileId, organizationId)
                 .orElseThrow(() -> new GeneralException(PhotoErrorCode.FILE_NOT_FOUND));
+        if (!uploadedFile.getStorageKey().startsWith("organizations/" + organizationId + "/photos/")
+                || !isSupportedImageType(uploadedFile.getContentType())) {
+            throw new GeneralException(PhotoErrorCode.INVALID_FILE_TYPE);
+        }
 
         Photo photo = Photo.builder()
                 .organizationId(organizationId)
@@ -177,6 +182,12 @@ public class PhotoCommandService {
         if (title != null && title.length() > 200) {
             throw new GeneralException(GeneralErrorCode.VALIDATION_ERROR);
         }
+    }
+
+    private boolean isSupportedImageType(String contentType) {
+        return "image/jpeg".equals(contentType)
+                || "image/png".equals(contentType)
+                || "image/webp".equals(contentType);
     }
 
     private boolean isUnusedPhotoFile(Long organizationId, UploadedFile uploadedFile) {

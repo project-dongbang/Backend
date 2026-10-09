@@ -86,6 +86,41 @@ class OrganizationCommandServiceTest {
     }
 
     @Nested
+    @DisplayName("대표 전용 권한")
+    class OwnerOnlyActionsTest {
+        private final Long orgId = 10L;
+        private final Long userId = 1L;
+
+        @Test
+        @DisplayName("운영진은 동아리를 삭제할 수 없다")
+        void adminCannotDeleteOrganization() {
+            Organization organization = Organization.builder().id(orgId).name("동방").slug("dongbang").build();
+            Membership admin = Membership.builder().organization(organization).userId(userId)
+                    .role(MembershipRole.ADMIN).memberName("운영진").studentNumber("20240001").build();
+            given(membershipRepository.findByOrganizationIdAndUserId(orgId, userId)).willReturn(Optional.of(admin));
+
+            assertThatThrownBy(() -> organizationCommandService.deleteOrganization(userId, orgId))
+                    .isInstanceOf(GeneralException.class)
+                    .hasFieldOrPropertyWithValue("errorCode", OrganizationErrorCode.OWNER_REQUIRED);
+            assertThat(organization.getStatus()).isEqualTo(OrganizationStatus.ACTIVE);
+        }
+
+        @Test
+        @DisplayName("운영진은 대표 권한을 위임할 수 없다")
+        void adminCannotDelegateOwner() {
+            Organization organization = Organization.builder().id(orgId).name("동방").slug("dongbang").build();
+            Membership admin = Membership.builder().organization(organization).userId(userId)
+                    .role(MembershipRole.ADMIN).memberName("운영진").studentNumber("20240001").build();
+            given(membershipRepository.findByOrganizationIdAndUserId(orgId, userId)).willReturn(Optional.of(admin));
+
+            assertThatThrownBy(() -> organizationCommandService.delegateOwner(userId, orgId,
+                    new DelegateOwnerRequest(20L)))
+                    .isInstanceOf(GeneralException.class)
+                    .hasFieldOrPropertyWithValue("errorCode", OrganizationErrorCode.OWNER_REQUIRED);
+        }
+    }
+
+    @Nested
     @DisplayName("동아리 운영 설정")
     class UpdateSettingsTest {
         private final Long orgId = 10L;
@@ -112,8 +147,8 @@ class OrganizationCommandServiceTest {
         }
 
         @Test
-        @DisplayName("운영진은 기존 기본 정보를 수정할 수 있지만 회비 설정은 수정할 수 없다")
-        void staffCannotUpdateSettings() {
+        @DisplayName("운영진은 기본 정보와 학기·기본 회비·계좌를 수정한다")
+        void staffUpdatesSettings() {
             Organization organization = Organization.builder().id(orgId).name("동방").slug("dongbang").build();
             Membership admin = Membership.builder().organization(organization).userId(userId)
                     .role(MembershipRole.ADMIN).memberName("운영진").studentNumber("20240001").build();
@@ -121,14 +156,29 @@ class OrganizationCommandServiceTest {
             given(organizationRepository.findById(orgId)).willReturn(Optional.of(organization));
 
             organizationCommandService.updateOrganization(userId, orgId,
-                    new UpdateOrganizationRequest("새 이름", null, null, null));
+                    new UpdateOrganizationRequest("새 이름", null, null,
+                            new UpdateOrganizationSettingsRequest("2026-2", new BigDecimal("30000"),
+                                    new OrganizationPaymentAccount("국민은행", "123-456", "동방"))));
             assertThat(organization.getName()).isEqualTo("새 이름");
+            assertThat(organization.getOperatingSemester()).isEqualTo("2026-2");
+            assertThat(organization.getDefaultFeeAmount()).isEqualByComparingTo("30000");
+            assertThat(organization.getFeeBankName()).isEqualTo("국민은행");
+            assertThat(organization.getFeeAccountNumber()).isEqualTo("123-456");
+        }
+
+        @Test
+        @DisplayName("일반 회원은 운영 설정을 수정할 수 없다")
+        void memberCannotUpdateSettings() {
+            Organization organization = Organization.builder().id(orgId).name("동방").slug("dongbang").build();
+            Membership member = Membership.builder().organization(organization).userId(userId)
+                    .role(MembershipRole.MEMBER).memberName("회원").studentNumber("20240001").build();
+            given(membershipRepository.findByOrganizationIdAndUserId(orgId, userId)).willReturn(Optional.of(member));
 
             assertThatThrownBy(() -> organizationCommandService.updateOrganization(userId, orgId,
                     new UpdateOrganizationRequest(null, null, null,
                             new UpdateOrganizationSettingsRequest("2026-2", null, null))))
                     .isInstanceOf(GeneralException.class)
-                    .hasFieldOrPropertyWithValue("errorCode", OrganizationErrorCode.OWNER_REQUIRED);
+                    .hasFieldOrPropertyWithValue("errorCode", OrganizationErrorCode.STAFF_REQUIRED);
             assertThat(organization.getOperatingSemester()).isNull();
         }
     }
