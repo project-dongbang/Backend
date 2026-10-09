@@ -60,7 +60,7 @@ public class PhotoController {
 
     // 3. 사진첩 사진 등록 (Multipart 직접 업로드)
     @PostMapping(value = "/api/v1/organizations/{organizationId}/photos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Operation(summary = "사진 등록", description = "multipart 파일 직접 업로드 또는 기존 업로드 파일 ID로 사진을 등록합니다.",
+    @Operation(summary = "사진 등록", description = "multipart 파일을 직접 업로드하거나 같은 동아리의 사진 전용 이미지 파일 ID로 등록합니다.",
             requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true, content = {
                     @io.swagger.v3.oas.annotations.media.Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
                             schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = PhotoMultipartRequest.class)),
@@ -82,14 +82,14 @@ public class PhotoController {
 
     // 3-1. 사진첩 사진 등록 (기 업로드 파일 ID 연결 등록)
     @PostMapping(value = "/api/v1/organizations/{organizationId}/photos", consumes = MediaType.APPLICATION_JSON_VALUE)
-    @Operation(summary = "사진 등록", description = "multipart 파일 직접 업로드 또는 기존 업로드 파일 ID로 사진을 등록합니다.",
+    @Operation(summary = "사진 등록", description = "multipart 파일을 직접 업로드하거나 같은 동아리의 사진 전용 이미지 파일 ID로 등록합니다.",
             requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true, content = {
                     @io.swagger.v3.oas.annotations.media.Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
                             schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = PhotoMultipartRequest.class)),
                     @io.swagger.v3.oas.annotations.media.Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = CreatePhotoRequest.class))
             }))
-    @ApiErrorExamples(value = PhotoErrorCode.class, names = {"STAFF_REQUIRED", "MEMBER_REQUIRED", "FILE_NOT_FOUND"})
+    @ApiErrorExamples(value = PhotoErrorCode.class, names = {"STAFF_REQUIRED", "MEMBER_REQUIRED", "FILE_NOT_FOUND", "INVALID_FILE_TYPE"})
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<PhotoDetailResponse> createPhotoWithFileId(
             @CurrentUserId Long userId,

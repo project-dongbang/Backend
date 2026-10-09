@@ -58,13 +58,10 @@ public class OrganizationCommandService {
     }
 
     public void updateOrganization(Long userId, Long organizationId, UpdateOrganizationRequest request) {
-        Membership editor = validateStaff(organizationId, userId);
+        validateStaff(organizationId, userId);
 
         UpdateOrganizationSettingsRequest settings = request.settings();
         if (settings != null) {
-            if (!editor.getRole().isOwner()) {
-                throw new GeneralException(OrganizationErrorCode.OWNER_REQUIRED);
-            }
             if (settings.operatingSemester() == null && settings.defaultFeeAmount() == null
                     && settings.paymentAccount() == null) {
                 throw new GeneralException(GeneralErrorCode.VALIDATION_ERROR);

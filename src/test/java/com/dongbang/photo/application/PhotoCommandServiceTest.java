@@ -145,6 +145,64 @@ class PhotoCommandServiceTest {
     }
 
     @Nested
+    @DisplayName("기존 파일 ID로 사진 등록")
+    class CreatePhotoWithFileIdTest {
+        private void givenStaff() {
+            given(membershipAccessFacade.isStaff(orgId, userId)).willReturn(true);
+            given(membershipAccessFacade.getMembershipSummary(orgId, userId)).willReturn(Optional.of(
+                    new MembershipSummary(membershipId, orgId, userId, "운영진", MembershipRole.ADMIN, MembershipStatus.ACTIVE)));
+        }
+
+        private UploadedFile uploadedFile(String storageKey, String contentType) {
+            return UploadedFile.builder().id(1L).organizationId(orgId)
+                    .uploadedByMembershipId(membershipId).storageKey(storageKey)
+                    .originalName("image.png").contentType(contentType).sizeBytes(100L).build();
+        }
+
+        @Test
+        @DisplayName("같은 동아리의 사진 전용 이미지 파일은 등록할 수 있다")
+        void acceptsPhotoImage() {
+            givenStaff();
+            UploadedFile file = uploadedFile("organizations/1/photos/image.png", "image/png");
+            given(uploadedFileRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(1L, orgId))
+                    .willReturn(Optional.of(file));
+            given(photoRepository.save(any(Photo.class))).willAnswer(invocation -> invocation.getArgument(0));
+
+            PhotoDetailResponse response = photoCommandService.createPhotoWithFileId(orgId, userId, 1L, "사진");
+
+            assertThat(response.file().uploadedFileId()).isEqualTo(1L);
+            assertThat(response.title()).isEqualTo("사진");
+            verify(photoRepository).save(any(Photo.class));
+        }
+
+        @Test
+        @DisplayName("회계 증빙 파일은 이미지여도 사진으로 등록할 수 없다")
+        void rejectsLedgerEvidence() {
+            givenStaff();
+            given(uploadedFileRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(1L, orgId))
+                    .willReturn(Optional.of(uploadedFile("organizations/1/ledger-evidence/image.png", "image/png")));
+
+            assertThatThrownBy(() -> photoCommandService.createPhotoWithFileId(orgId, userId, 1L, "사진"))
+                    .isInstanceOf(GeneralException.class)
+                    .hasFieldOrPropertyWithValue("errorCode", PhotoErrorCode.INVALID_FILE_TYPE);
+            verify(photoRepository, never()).save(any(Photo.class));
+        }
+
+        @Test
+        @DisplayName("사진 저장 경로에 있어도 이미지가 아닌 파일은 등록할 수 없다")
+        void rejectsNonImage() {
+            givenStaff();
+            given(uploadedFileRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(1L, orgId))
+                    .willReturn(Optional.of(uploadedFile("organizations/1/photos/document.pdf", "application/pdf")));
+
+            assertThatThrownBy(() -> photoCommandService.createPhotoWithFileId(orgId, userId, 1L, "사진"))
+                    .isInstanceOf(GeneralException.class)
+                    .hasFieldOrPropertyWithValue("errorCode", PhotoErrorCode.INVALID_FILE_TYPE);
+            verify(photoRepository, never()).save(any(Photo.class));
+        }
+    }
+
+    @Nested
     @DisplayName("사진 정보 수정")
     class UpdatePhotoTest {
 

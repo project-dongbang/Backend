@@ -41,9 +41,9 @@ public class OrganizationController {
     }
 
     // 2. 동아리 수정
-    @Operation(summary = "동아리 정보 수정", description = "운영진은 기본 정보를 수정할 수 있습니다. 운영 학기(YYYY-1/2), 기본 회비, 계좌를 포함한 settings는 대표만 수정할 수 있으며 기존 납부 항목에는 소급 적용되지 않습니다.")
+    @Operation(summary = "동아리 정보 수정", description = "대표와 운영진은 기본 정보와 운영 학기(YYYY-1/2), 기본 회비, 계좌를 포함한 settings를 수정할 수 있습니다. 기존 납부 항목에는 소급 적용되지 않습니다.")
     @PatchMapping("/api/v1/organizations/{organizationId}")
-    @ApiErrorExamples(value = OrganizationErrorCode.class, names = {"STAFF_REQUIRED", "OWNER_REQUIRED", "ORGANIZATION_NOT_FOUND"})
+    @ApiErrorExamples(value = OrganizationErrorCode.class, names = {"STAFF_REQUIRED", "ORGANIZATION_NOT_FOUND"})
     public ApiResponse<Void> updateOrganization(
             @Parameter(hidden = true) @CurrentUserId Long userId,
             @Parameter(description = "동아리 ID") @PathVariable Long organizationId,
