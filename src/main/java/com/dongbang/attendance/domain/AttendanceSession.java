@@ -51,4 +51,16 @@ public class AttendanceSession extends BaseTimeEntity {
             closedAt = now;
         }
     }
+
+    public void reopen(Long openerId, String newQrToken, Instant now) {
+        if (status == AttendanceSessionStatus.OPEN && !isExpired(now)) {
+            throw new IllegalStateException("진행 중인 출석은 다시 열 수 없습니다.");
+        }
+        openedByMembershipId = openerId;
+        qrToken = newQrToken;
+        qrVersion++;
+        openedAt = now;
+        closedAt = null;
+        status = AttendanceSessionStatus.OPEN;
+    }
 }
