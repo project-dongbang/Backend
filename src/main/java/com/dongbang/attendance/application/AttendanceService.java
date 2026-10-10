@@ -86,8 +86,15 @@ public class AttendanceService {
     public Started start(Long organizationId, Long userId, Long eventId) {
         Long actorId = access.requireStaff(organizationId, userId);
         AttendanceEvent event = events.lockEvent(organizationId, eventId);
-        if (sessions.findByEventId(eventId).isPresent()) throw new GeneralException(AttendanceErrorCode.ALREADY_GENERATED);
+        AttendanceSession existing = sessions.findForUpdateByEventId(eventId).orElse(null);
         Instant now = now();
+        if (existing != null) {
+            if (sessionStatus(existing, now) == SessionViewStatus.ACTIVE) {
+                throw new GeneralException(AttendanceErrorCode.ALREADY_GENERATED);
+            }
+            existing.reopen(actorId, qrTokens.generate(), now);
+            return new Started(eventId, sessionView(existing, now), now);
+        }
         AttendanceSession session = sessions.save(new AttendanceSession(eventId, actorId, qrTokens.generate(), now));
         List<Long> participantIds = events.participantIds(eventId);
         for (Long membershipId : participantIds) {

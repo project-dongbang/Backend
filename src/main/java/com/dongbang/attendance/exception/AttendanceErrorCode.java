@@ -14,7 +14,7 @@ public enum AttendanceErrorCode implements BaseErrorCode {
     PARTICIPANT_ONLY(HttpStatus.FORBIDDEN, "ATT_403_001", "행사 참가자만 출석할 수 있습니다."),
     RECORD_NOT_FOUND(HttpStatus.NOT_FOUND, "ATT_404_001", "출석 기록을 찾을 수 없습니다."),
     SESSION_NOT_STARTED(HttpStatus.CONFLICT, "ATT_409_001", "출석이 시작되지 않았습니다."),
-    ALREADY_GENERATED(HttpStatus.CONFLICT, "ATT_409_002", "이미 QR 코드가 생성된 행사입니다."),
+    ALREADY_GENERATED(HttpStatus.CONFLICT, "ATT_409_002", "QR 출석이 이미 진행 중입니다."),
     SESSION_CLOSED(HttpStatus.CONFLICT, "ATT_409_003", "출석이 종료되었습니다."),
     ALREADY_PRESENT(HttpStatus.CONFLICT, "ATT_409_004", "이미 출석 처리되었습니다."),
     VERSION_CONFLICT(HttpStatus.CONFLICT, "ATT_409_005", "출석 기록이 변경되었습니다. 다시 조회해 주세요."),

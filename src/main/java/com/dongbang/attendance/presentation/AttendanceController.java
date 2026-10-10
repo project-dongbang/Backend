@@ -70,7 +70,7 @@ public class AttendanceController {
 
     @PostMapping("/events/{eventId}/attendance/session")
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "출석 시작 및 QR 생성", description = "운영진이 10분 동안 유효한 QR을 한 번 생성합니다.")
+    @Operation(summary = "출석 시작 또는 다시 열기", description = "운영진이 10분 동안 유효한 QR을 생성합니다. 종료 또는 만료 후 다시 열면 새 QR이 발급되고 기존 출석 기록은 유지됩니다.")
     @ApiErrorExamples(value = OrganizationErrorCode.class, names = {"STAFF_REQUIRED"})
     @ApiErrorExamples(value = EventErrorCode.class, names = {"EVENT_NOT_FOUND", "EVENT_ONLY", "EVENT_CANCELED"})
     @ApiErrorExamples(value = AttendanceErrorCode.class, names = {"ALREADY_GENERATED"})
