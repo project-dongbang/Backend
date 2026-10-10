@@ -113,4 +113,14 @@ public class Membership {
         this.status = MembershipStatus.EXPELLED;
         this.leftAt = Instant.now();
     }
+
+    public void anonymizeForAccountWithdrawal() {
+        if (this.status == MembershipStatus.ACTIVE) {
+            leave();
+        }
+        this.userId = null;
+        this.memberName = "탈퇴 회원";
+        this.studentNumber = "W" + this.id;
+        this.position = null;
+    }
 }

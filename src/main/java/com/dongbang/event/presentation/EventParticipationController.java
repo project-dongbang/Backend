@@ -50,10 +50,9 @@ public class EventParticipationController {
     @ApiErrorExamples(value = EventErrorCode.class, names = {
             "EVENT_NOT_FOUND", "EVENT_ONLY", "EVENT_CANCELED", "REGISTRATION_CLOSED", "PARTICIPANT_NOT_FOUND"
     })
-    public ApiResponse<Void> withdraw(@Parameter(hidden = true) @CurrentUserId Long userId,
+    public ApiResponse<EventApplicationResult> withdraw(@Parameter(hidden = true) @CurrentUserId Long userId,
             @PathVariable @Positive Long organizationId, @PathVariable @Positive Long eventId) {
-        service.withdraw(organizationId, userId, eventId);
-        return ApiResponse.onSuccess(GeneralSuccessCode.OK, null);
+        return ApiResponse.onSuccess(GeneralSuccessCode.OK, service.withdraw(organizationId, userId, eventId));
     }
 
     @PostMapping("/applications/close")

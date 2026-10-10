@@ -2,6 +2,7 @@ package com.dongbang.user.application.facade;
 
 import com.dongbang.global.exception.GeneralException;
 import com.dongbang.user.domain.User;
+import com.dongbang.user.domain.UserStatus;
 import com.dongbang.user.domain.repository.UserRepository;
 import com.dongbang.user.exception.UserErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -80,6 +81,7 @@ public class UserAccountFacade {
 
     private User findUser(Long userId) {
         return userRepository.findById(userId)
+                .filter(user -> user.getStatus() != UserStatus.WITHDRAWN)
                 .orElseThrow(() -> new GeneralException(UserErrorCode.USER_NOT_FOUND));
     }
 

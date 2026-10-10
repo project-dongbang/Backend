@@ -74,4 +74,16 @@ class UserAccountFacadeTest {
         )).isInstanceOfSatisfying(GeneralException.class,
                 ex -> assertThat(ex.getErrorCode()).isEqualTo(UserErrorCode.EMAIL_ALREADY_EXISTS));
     }
+
+    @Test
+    @DisplayName("탈퇴한 계정은 기존 액세스 토큰으로 조회할 수 없다")
+    void withdrawnAccountIsNotAuthenticated() {
+        User user = User.pendingOnboarding();
+        user.withdraw(Instant.now());
+        given(userRepository.findById(7L)).willReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> userAccountFacade.getAccount(7L))
+                .isInstanceOfSatisfying(GeneralException.class,
+                        ex -> assertThat(ex.getErrorCode()).isEqualTo(UserErrorCode.USER_NOT_FOUND));
+    }
 }

@@ -67,20 +67,13 @@ public class AuthApplicationService {
             String deviceInfo,
             String ipAddress
     ) {
+        URI redirectUri = validatedCallbackRedirectUri(provider, state, stateCookie);
         if (oauthError != null && !oauthError.isBlank()) {
             throw new GeneralException(AuthErrorCode.OAUTH_AUTHENTICATION_FAILED);
         }
-        if (authorizationCode == null || authorizationCode.isBlank()
-                || state == null || state.isBlank()
-                || stateCookie == null || !constantTimeEquals(state, stateCookie)) {
+        if (authorizationCode == null || authorizationCode.isBlank()) {
             throw new GeneralException(AuthErrorCode.INVALID_OAUTH_REQUEST);
         }
-
-        OAuthStateClaims stateClaims = jwtTokenService.parseOAuthState(state);
-        if (stateClaims.provider() != provider) {
-            throw new GeneralException(AuthErrorCode.INVALID_OAUTH_REQUEST);
-        }
-        validateRedirectUri(stateClaims.redirectUri());
 
         OAuthProviderClient client = providerRegistry.get(provider);
         OAuthProfile profile = client.fetchProfile(authorizationCode);
@@ -93,7 +86,29 @@ public class AuthApplicationService {
         userAccountFacade.recordLogin(account.getUserId(), now);
         UserAccountSummary user = userAccountFacade.getAccount(account.getUserId());
         TokenPair tokens = createSession(account.getUserId(), deviceInfo, ipAddress);
-        return new OAuthLoginResult(URI.create(stateClaims.redirectUri()), tokens, user.onboardingRequired());
+        return new OAuthLoginResult(redirectUri, tokens, user.onboardingRequired());
+    }
+
+    @Transactional(readOnly = true)
+    public URI validatedCallbackRedirectUri(OAuthProvider provider, String state, String stateCookie) {
+        if (state == null || state.isBlank() || stateCookie == null
+                || !constantTimeEquals(state, stateCookie)) {
+            throw new GeneralException(AuthErrorCode.INVALID_OAUTH_REQUEST);
+        }
+        return validatedFailureRedirectUri(provider, state);
+    }
+
+    @Transactional(readOnly = true)
+    public URI validatedFailureRedirectUri(OAuthProvider provider, String state) {
+        if (state == null || state.isBlank()) {
+            throw new GeneralException(AuthErrorCode.INVALID_OAUTH_REQUEST);
+        }
+        OAuthStateClaims claims = jwtTokenService.parseOAuthState(state);
+        if (claims.provider() != provider) {
+            throw new GeneralException(AuthErrorCode.INVALID_OAUTH_REQUEST);
+        }
+        validateRedirectUri(claims.redirectUri());
+        return URI.create(claims.redirectUri());
     }
 
     public TokenPair refresh(String refreshToken, String deviceInfo, String ipAddress) {
@@ -124,21 +139,18 @@ public class AuthApplicationService {
 
     public void logout(String refreshToken) {
         if (refreshToken == null || refreshToken.isBlank()) {
-            throw new GeneralException(GeneralErrorCode.UNAUTHORIZED);
+            return;
         }
         RefreshTokenClaims claims;
         try {
             claims = jwtTokenService.parseRefreshToken(refreshToken);
         } catch (GeneralException ex) {
-            throw new GeneralException(GeneralErrorCode.UNAUTHORIZED);
+            return;
         }
-        AuthSession session = authSessionRepository.findBySessionKeyForUpdate(claims.sessionKey())
-                .orElseThrow(() -> new GeneralException(GeneralErrorCode.UNAUTHORIZED));
-        if (!session.getUserId().equals(claims.userId())
-                || !tokenHashService.matches(refreshToken, session.getRefreshTokenHash())) {
-            throw new GeneralException(GeneralErrorCode.UNAUTHORIZED);
-        }
-        session.revoke(clock.instant());
+        authSessionRepository.findBySessionKeyForUpdate(claims.sessionKey())
+                .filter(session -> session.getUserId().equals(claims.userId()))
+                .filter(session -> tokenHashService.matches(refreshToken, session.getRefreshTokenHash()))
+                .ifPresent(session -> session.revoke(clock.instant()));
     }
 
     @Transactional(readOnly = true)

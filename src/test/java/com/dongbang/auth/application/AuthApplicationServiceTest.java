@@ -97,6 +97,25 @@ class AuthApplicationServiceTest {
     }
 
     @Test
+    @DisplayName("OAuth 실패 후 이동할 주소도 서명된 state와 허용 목록으로 검증한다")
+    void validatedCallbackRedirectUriRejectsUntrustedState() {
+        String callback = "https://dongbang-frontend.vercel.app/auth/callback";
+        given(jwtTokenService.parseOAuthState("signed-state"))
+                .willReturn(new OAuthStateClaims(OAuthProvider.KAKAO, callback));
+
+        assertThat(authService.validatedCallbackRedirectUri(
+                OAuthProvider.KAKAO, "signed-state", "signed-state")).isEqualTo(URI.create(callback));
+        assertThat(authService.validatedFailureRedirectUri(OAuthProvider.KAKAO, "signed-state"))
+                .isEqualTo(URI.create(callback));
+        assertThatThrownBy(() -> authService.validatedCallbackRedirectUri(
+                OAuthProvider.KAKAO, "signed-state", "different-state"))
+                .isInstanceOf(GeneralException.class);
+        assertThatThrownBy(() -> authService.validatedCallbackRedirectUri(
+                OAuthProvider.GOOGLE, "signed-state", "signed-state"))
+                .isInstanceOf(GeneralException.class);
+    }
+
+    @Test
     @DisplayName("Refresh Token을 한 번 사용하면 DB 해시와 만료 정보를 새 토큰 기준으로 회전한다")
     void refreshRotatesStoredToken() {
         UUID sessionKey = UUID.randomUUID();
@@ -132,6 +151,14 @@ class AuthApplicationServiceTest {
         assertThat(session.getIpAddress()).isEqualTo("10.0.0.1");
         assertThat(session.getLastUsedAt()).isNotNull();
         verify(userAccountFacade).getAccount(7L);
+    }
+
+    @Test
+    @DisplayName("갱신 쿠키가 없어도 로그아웃을 완료하고 브라우저 쿠키를 지울 수 있다")
+    void logoutWithoutRefreshTokenIsIdempotent() {
+        authService.logout(null);
+        authService.logout("");
+        org.mockito.Mockito.verifyNoInteractions(authSessionRepository);
     }
 
     @Test

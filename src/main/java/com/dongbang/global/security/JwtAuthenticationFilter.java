@@ -3,6 +3,7 @@ package com.dongbang.global.security;
 import com.dongbang.auth.infrastructure.token.JwtTokenService;
 import com.dongbang.auth.infrastructure.web.AuthCookieService;
 import com.dongbang.global.exception.GeneralException;
+import com.dongbang.global.response.code.GeneralErrorCode;
 import com.dongbang.user.application.facade.UserAccountFacade;
 import com.dongbang.user.application.facade.UserAccountSummary;
 import com.dongbang.user.domain.UserStatus;
@@ -39,6 +40,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             try {
                 Long userId = jwtTokenService.parseAccessToken(accessToken).userId();
                 UserAccountSummary user = userAccountFacade.getAccount(userId);
+                if (user.status() == UserStatus.WITHDRAWN) {
+                    throw new GeneralException(GeneralErrorCode.UNAUTHORIZED);
+                }
                 String role = user.status() == UserStatus.ACTIVE ? "ROLE_USER" : "ROLE_ONBOARDING";
                 var authentication = UsernamePasswordAuthenticationToken.authenticated(
                         userId,

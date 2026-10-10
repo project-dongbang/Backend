@@ -6,6 +6,8 @@ import com.dongbang.global.config.WebMvcConfig;
 import com.dongbang.global.security.ApiSecurityExceptionHandler;
 import com.dongbang.mypage.application.MyPageService;
 import com.dongbang.mypage.application.MyPageActivityService;
+import com.dongbang.mypage.application.AccountWithdrawalService;
+import com.dongbang.auth.infrastructure.web.AuthCookieService;
 import com.dongbang.mypage.domain.MyFeeStatus;
 import com.dongbang.mypage.presentation.dto.response.MyActivitiesResponse;
 import com.dongbang.mypage.presentation.dto.response.CurrentMembershipResponse;
@@ -17,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseCookie;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -25,9 +28,11 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -39,6 +44,35 @@ class MyPageControllerTest {
     @Autowired private MockMvc mvc;
     @MockitoBean private MyPageService myPageService;
     @MockitoBean private MyPageActivityService myPageActivityService;
+    @MockitoBean private AccountWithdrawalService accountWithdrawalService;
+    @MockitoBean private AuthCookieService cookieService;
+
+    @Test
+    @DisplayName("회원 탈퇴 시 인증 쿠키를 삭제한다")
+    void withdrawAccount() throws Exception {
+        given(cookieService.clearAccessToken()).willReturn(ResponseCookie.from("access_token", "").path("/").maxAge(0).build());
+        given(cookieService.clearRefreshToken()).willReturn(ResponseCookie.from("refresh_token", "").path("/api/v1/auth").maxAge(0).build());
+
+        var result = mvc.perform(delete("/api/v1/users/me").with(user("1").roles("USER")).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("COMMON_200_001"))
+                .andReturn();
+        assertThat(result.getResponse().getHeaders("Set-Cookie"))
+                .anyMatch(value -> value.contains("access_token="))
+                .anyMatch(value -> value.contains("refresh_token="));
+        org.mockito.Mockito.verify(accountWithdrawalService).withdraw(1L);
+    }
+
+    @Test
+    @DisplayName("가입을 완료하지 않은 계정도 탈퇴할 수 있다")
+    void pendingAccountCanWithdraw() throws Exception {
+        given(cookieService.clearAccessToken()).willReturn(ResponseCookie.from("access_token", "").path("/").maxAge(0).build());
+        given(cookieService.clearRefreshToken()).willReturn(ResponseCookie.from("refresh_token", "").path("/api/v1/auth").maxAge(0).build());
+
+        mvc.perform(delete("/api/v1/users/me").with(user("1").roles("ONBOARDING")).with(csrf()))
+                .andExpect(status().isOk());
+        org.mockito.Mockito.verify(accountWithdrawalService).withdraw(1L);
+    }
 
     @Test
     @DisplayName("내 프로필과 선택 동아리 회원 정보를 조회한다")

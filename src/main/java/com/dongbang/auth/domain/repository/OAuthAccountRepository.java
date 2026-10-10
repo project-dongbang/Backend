@@ -11,4 +11,5 @@ public interface OAuthAccountRepository {
     void flush();
     Optional<OAuthAccount> findByProviderAndProviderUserId(OAuthProvider provider, String providerUserId);
     List<OAuthAccount> findAllByUserId(Long userId);
+    void deleteAllByUserId(Long userId);
 }

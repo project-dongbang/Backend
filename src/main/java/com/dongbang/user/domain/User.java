@@ -106,4 +106,17 @@ public class User extends BaseTimeEntity {
         this.profileImageStorageKey = null;
         this.profileImageUrl = null;
     }
+
+    public void withdraw(Instant withdrawnAt) {
+        this.status = UserStatus.WITHDRAWN;
+        this.deletedAt = withdrawnAt;
+        this.email = null;
+        this.name = null;
+        this.studentNumber = null;
+        this.department = null;
+        this.profileImageUrl = null;
+        this.profileImageStorageKey = null;
+        this.onboardingCompletedAt = null;
+        this.lastLoginAt = null;
+    }
 }
