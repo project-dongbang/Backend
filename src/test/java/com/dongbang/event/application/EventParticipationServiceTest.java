@@ -72,11 +72,13 @@ class EventParticipationServiceTest {
         locked(); member();
         var participant = new EventParticipant(10L, 2L, now);
         when(participants.findByEventIdAndMembershipId(10L, 2L)).thenReturn(Optional.of(participant));
-        service.withdraw(1L, 3L, 10L);
+        var result = service.withdraw(1L, 3L, 10L);
         verify(participants, never()).delete(any());
         assertThat(participant.getStatus()).isEqualTo("CANCELED");
         assertThat(participant.getCanceledAt()).isEqualTo(now);
         assertThat(event.getParticipantVersion()).isEqualTo(1);
+        assertThat(result.participating()).isFalse();
+        assertThat(result.participantCount()).isZero();
     }
     @Test void staffEditRequiresCurrentVersion() {
         locked(); event.participantsChanged();

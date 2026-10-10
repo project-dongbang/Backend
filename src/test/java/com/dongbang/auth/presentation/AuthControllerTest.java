@@ -2,6 +2,8 @@ package com.dongbang.auth.presentation;
 
 import com.dongbang.auth.application.AuthApplicationService;
 import com.dongbang.auth.application.OAuthAuthorizationResult;
+import com.dongbang.auth.exception.AuthErrorCode;
+import com.dongbang.global.exception.GeneralException;
 import com.dongbang.auth.domain.OAuthProvider;
 import com.dongbang.auth.infrastructure.token.JwtTokenService;
 import com.dongbang.auth.infrastructure.web.AuthCookieService;
@@ -26,10 +28,13 @@ import java.time.Instant;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -86,6 +91,61 @@ class AuthControllerTest {
                 .andExpect(header().string("Location", kakaoUri.toString()))
                 .andExpect(header().string("Set-Cookie",
                         org.hamcrest.Matchers.containsString("oauth_state_kakao=signed-state")));
+    }
+
+    @Test
+    @DisplayName("OAuth 취소 시 검증된 프론트 콜백으로 돌아가고 state 쿠키를 지운다")
+    void cancelledOAuthReturnsToFrontend() throws Exception {
+        String callback = "https://dongbang-frontend.vercel.app/auth/callback";
+        given(authService.completeOAuthLogin(eq(OAuthProvider.KAKAO), any(), eq("signed-state"),
+                eq("signed-state"), eq("access_denied"), any(), any()))
+                .willThrow(new GeneralException(AuthErrorCode.OAUTH_AUTHENTICATION_FAILED));
+        given(authService.validatedFailureRedirectUri(OAuthProvider.KAKAO, "signed-state"))
+                .willReturn(URI.create(callback));
+        given(cookieService.clearOAuthState(OAuthProvider.KAKAO))
+                .willReturn(ResponseCookie.from("oauth_state_kakao", "").maxAge(0).build());
+
+        mvc.perform(get("/api/v1/auth/oauth/kakao/callback")
+                        .queryParam("state", "signed-state")
+                        .queryParam("error", "access_denied")
+                        .cookie(new jakarta.servlet.http.Cookie("oauth_state_kakao", "signed-state")))
+                .andExpect(status().isFound())
+                .andExpect(header().string("Location", callback + "?loginError=cancelled"))
+                .andExpect(header().string("Set-Cookie",
+                        org.hamcrest.Matchers.containsString("oauth_state_kakao=")));
+    }
+
+    @Test
+    @DisplayName("상태 쿠키가 빠져도 서명된 state가 있으면 오류 화면으로 돌아간다")
+    void failedOAuthWithoutStateCookieReturnsToFrontend() throws Exception {
+        String callback = "https://dongbang-frontend.vercel.app/auth/callback";
+        given(authService.completeOAuthLogin(eq(OAuthProvider.GOOGLE), isNull(), eq("signed-state"),
+                isNull(), eq("access_denied"), any(), any()))
+                .willThrow(new GeneralException(AuthErrorCode.INVALID_OAUTH_REQUEST));
+        given(authService.validatedFailureRedirectUri(OAuthProvider.GOOGLE, "signed-state"))
+                .willReturn(URI.create(callback));
+        given(cookieService.clearOAuthState(OAuthProvider.GOOGLE))
+                .willReturn(ResponseCookie.from("oauth_state_google", "").maxAge(0).build());
+
+        mvc.perform(get("/api/v1/auth/oauth/google/callback")
+                        .queryParam("state", "signed-state")
+                        .queryParam("error", "access_denied"))
+                .andExpect(status().isFound())
+                .andExpect(header().string("Location", callback + "?loginError=cancelled"));
+    }
+
+    @Test
+    @DisplayName("갱신 쿠키가 없어도 로그아웃은 두 인증 쿠키를 지운다")
+    void logoutClearsCookiesWithoutRefreshToken() throws Exception {
+        given(cookieService.clearAccessToken())
+                .willReturn(ResponseCookie.from("access_token", "").maxAge(0).build());
+        given(cookieService.clearRefreshToken())
+                .willReturn(ResponseCookie.from("refresh_token", "").maxAge(0).build());
+
+        mvc.perform(post("/api/v1/auth/logout").with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(header().stringValues("Set-Cookie",
+                        org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.containsString("access_token="))));
     }
 
     @Test

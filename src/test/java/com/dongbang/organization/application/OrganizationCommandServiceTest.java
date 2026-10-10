@@ -5,6 +5,7 @@ import com.dongbang.organization.domain.*;
 import com.dongbang.organization.domain.repository.InvitationRepository;
 import com.dongbang.organization.domain.repository.MembershipRepository;
 import com.dongbang.organization.domain.repository.OrganizationRepository;
+import com.dongbang.organization.application.port.FutureEventRegistrationCleanupPort;
 import com.dongbang.organization.exception.OrganizationErrorCode;
 import com.dongbang.organization.presentation.dto.request.*;
 import com.dongbang.organization.presentation.dto.OrganizationPaymentAccount;
@@ -27,6 +28,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
@@ -48,6 +50,9 @@ class OrganizationCommandServiceTest {
 
     @Mock
     private TokenHashService tokenHashService;
+
+    @Mock
+    private FutureEventRegistrationCleanupPort eventRegistrationCleanup;
 
     @InjectMocks
     private OrganizationCommandService organizationCommandService;
@@ -216,6 +221,8 @@ class OrganizationCommandServiceTest {
             assertThat(response.status()).isEqualTo(MembershipStatus.INACTIVE);
             assertThat(response.generation()).isEqualTo("13기");
             assertThat(response.position()).isEqualTo("총무");
+            verify(eventRegistrationCleanup).cancelFutureRegistrations(
+                    eq(memberId), eq(orgId), any(Instant.class));
         }
 
         @Test
@@ -379,6 +386,26 @@ class OrganizationCommandServiceTest {
     @Nested
     @DisplayName("동아리 탈퇴")
     class LeaveOrganizationTest {
+
+        @Test
+        @DisplayName("성공: 탈퇴하면 예정 행사 신청을 먼저 취소한다")
+        void success_cancels_future_registrations() {
+            Membership member = Membership.builder()
+                    .id(20L)
+                    .role(MembershipRole.MEMBER)
+                    .memberName("회원")
+                    .studentNumber("20240001")
+                    .build();
+            given(membershipRepository.findByOrganizationIdAndUserId(10L, 1L))
+                    .willReturn(Optional.of(member));
+
+            organizationCommandService.leaveOrganization(1L, 10L);
+
+            assertThat(member.getStatus()).isEqualTo(MembershipStatus.LEFT);
+            verify(eventRegistrationCleanup).cancelFutureRegistrations(
+                    org.mockito.ArgumentMatchers.eq(20L), org.mockito.ArgumentMatchers.eq(10L),
+                    org.mockito.ArgumentMatchers.any(Instant.class));
+        }
 
         @Test
         @DisplayName("실패: 회장(OWNER)은 권한을 위임하기 전까지 탈퇴할 수 없다")

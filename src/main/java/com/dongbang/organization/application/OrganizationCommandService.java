@@ -6,6 +6,7 @@ import com.dongbang.organization.domain.*;
 import com.dongbang.organization.domain.repository.InvitationRepository;
 import com.dongbang.organization.domain.repository.MembershipRepository;
 import com.dongbang.organization.domain.repository.OrganizationRepository;
+import com.dongbang.organization.application.port.FutureEventRegistrationCleanupPort;
 import com.dongbang.organization.exception.OrganizationErrorCode;
 import com.dongbang.organization.presentation.dto.request.*;
 import com.dongbang.organization.presentation.dto.response.CreateOrganizationResponse;
@@ -33,6 +34,7 @@ public class OrganizationCommandService {
     private final InvitationRepository invitationRepository;
     private final UserAccountFacade userAccountFacade;
     private final TokenHashService tokenHashService;
+    private final FutureEventRegistrationCleanupPort eventRegistrationCleanup;
 
     public CreateOrganizationResponse createOrganization(Long userId, CreateOrganizationRequest request) {
         Organization organization = Organization.builder()
@@ -102,6 +104,10 @@ public class OrganizationCommandService {
         }
 
         if (request.status() != null) {
+            if (target.getStatus() == MembershipStatus.ACTIVE
+                    && request.status() == UpdateMemberInfoRequest.ActivityStatus.INACTIVE) {
+                eventRegistrationCleanup.cancelFutureRegistrations(target.getId(), organizationId, Instant.now());
+            }
             target.updateActivityStatus(request.status().toMembershipStatus());
         }
         if (request.generation() != null) {
@@ -205,6 +211,7 @@ public class OrganizationCommandService {
             throw new GeneralException(OrganizationErrorCode.INVALID_DELEGATION_TARGET, "회장은 강퇴할 수 없습니다.");
         }
 
+        eventRegistrationCleanup.cancelFutureRegistrations(target.getId(), organizationId, Instant.now());
         target.expel();
     }
 
@@ -232,6 +239,7 @@ public class OrganizationCommandService {
             throw new GeneralException(OrganizationErrorCode.OWNER_CANNOT_LEAVE);
         }
 
+        eventRegistrationCleanup.cancelFutureRegistrations(membership.getId(), organizationId, Instant.now());
         membership.leave();
     }
 

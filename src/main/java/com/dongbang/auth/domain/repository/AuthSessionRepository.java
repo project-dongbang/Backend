@@ -8,4 +8,5 @@ import java.util.UUID;
 public interface AuthSessionRepository {
     AuthSession save(AuthSession session);
     Optional<AuthSession> findBySessionKeyForUpdate(UUID sessionKey);
+    void deleteAllByUserId(Long userId);
 }

@@ -164,9 +164,15 @@ chmod 600 .env
 
 `.env`의 데이터베이스, JWT, OAuth, S3 값과 선택적인 `GEMINI_API_KEY`를 실제 운영 값으로 변경해야 합니다. EC2에는 장기 AWS Access Key를 저장하지 않고 다음 권한을 가진 IAM Role을 연결합니다. `RECEIPT_OCR_URL`은 운영 Compose 내부 통신 주소인 `http://ocr:8000`을 유지합니다.
 
-프론트와 API가 서로 다른 사이트인 운영 환경에서는 `AUTH_COOKIE_SECURE=true`를 유지하고, EC2의 `.env`에서 `AUTH_ALLOWED_REDIRECT_URIS=https://dongbang-frontend.vercel.app,https://dongbang-frontend.vercel.app/auth/callback`로 설정합니다. GitHub Actions는 운영 `.env`를 덮어쓰지 않으므로 예시 파일 변경만으로는 반영되지 않습니다. Google/Kakao 개발자 콘솔의 OAuth 콜백은 프론트 주소가 아니라 각각 `https://api.3.36.171.188.nip.io/api/v1/auth/oauth/google/callback`, `https://api.3.36.171.188.nip.io/api/v1/auth/oauth/kakao/callback`입니다.
+운영 프론트는 Vercel의 `/api/*` 리라이트를 통해 API를 같은 출처에서 호출합니다. EC2의 `.env`에서 `AUTH_COOKIE_SECURE=true`와 `AUTH_ALLOWED_REDIRECT_URIS=https://dongbang-frontend.vercel.app,https://dongbang-frontend.vercel.app/auth/callback`을 설정합니다. Google/Kakao 개발자 콘솔과 EC2의 콜백 URI는 각각 `https://dongbang-frontend.vercel.app/api/v1/auth/oauth/google/callback`, `https://dongbang-frontend.vercel.app/api/v1/auth/oauth/kakao/callback`으로 일치시킵니다. GitHub Actions는 운영 `.env`를 덮어쓰지 않으므로 예시 파일 변경만으로는 반영되지 않습니다.
 
-프론트는 로그인 후 `GET /api/v1/auth/csrf`를 `credentials: 'include'`로 호출하여 `result.token`과 `result.headerName`을 받습니다. 이후 POST/PUT/PATCH/DELETE 요청에는 쿠키를 포함하고 `X-XSRF-TOKEN: <result.token>`을 전송합니다. CSRF 쿠키는 운영 환경에서 `Secure; SameSite=None`으로 발급되지만 브라우저의 서드파티 쿠키 차단 정책에 따라 교차 사이트 쿠키 자체가 차단될 수 있으므로 실제 운영 브라우저에서 로그인부터 변경 요청까지 확인해야 합니다.
+프론트는 로그인 후 `GET /api/v1/auth/csrf`를 `credentials: 'include'`로 호출하여 `result.token`과 `result.headerName`을 받습니다. 이후 POST/PUT/PATCH/DELETE 요청에는 쿠키를 포함하고 `X-XSRF-TOKEN: <result.token>`을 전송합니다. 운영 브라우저에서 로그인부터 변경 요청과 로그아웃까지 확인해야 합니다.
+
+회원 탈퇴는 인증된 사용자가 `DELETE /api/v1/users/me`로 요청합니다. 탈퇴 시 로그인 쿠키와 모든 서버 세션·소셜 계정 연결을 해제하고, 프로필과 연결된 동아리 회원 정보를 익명화합니다. 예정된 행사 신청은 취소해 정원을 반환하며 지난 출석·회비 기록은 보존합니다. 활동 중인 동아리의 회장은 먼저 운영진에게 대표 권한을 위임해야 합니다(`ORG_400_002`). 프론트에서는 이 오류에 위임 안내를 표시하고, 성공 시 보관 중인 사용자·동아리 상태를 비운 뒤 로그인 화면으로 이동해야 합니다.
+
+동아리 탈퇴·강퇴·활동 상태를 휴면(INACTIVE)으로 변경할 때도 예정된 행사 신청을 취소합니다. 이미 시작된 행사의 과거 신청·출석 기록은 유지합니다. 활동으로 다시 변경해도 취소된 신청은 자동 복구되지 않습니다.
+
+OAuth 제공자에서 로그인을 취소하거나 인증 처리에 실패하면, 서명된 `state`의 허용된 프론트 콜백으로 `loginError=cancelled|failed`를 전달합니다. 프론트는 로그인 화면에서 이를 안내합니다. 로그인 성공에는 `state` 쿠키 일치 검증도 적용합니다.
 
 - `s3:PutObject`
 - `s3:GetObject`

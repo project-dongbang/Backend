@@ -13,6 +13,7 @@ import com.dongbang.auth.presentation.dto.response.CsrfTokenResponse;
 import com.dongbang.auth.presentation.dto.response.OnboardingResponse;
 import com.dongbang.auth.presentation.dto.response.RefreshTokenResponse;
 import com.dongbang.global.response.ApiResponse;
+import com.dongbang.global.exception.GeneralException;
 import com.dongbang.global.response.code.GeneralSuccessCode;
 import com.dongbang.global.security.CurrentUserId;
 import com.dongbang.global.security.SpaCsrfTokenRequestHandler;
@@ -170,15 +171,20 @@ public class AuthController {
             String stateCookie,
             HttpServletRequest request
     ) {
-        OAuthLoginResult result = authService.completeOAuthLogin(
-                provider,
-                code,
-                state,
-                stateCookie,
-                error,
-                userAgent(request),
-                request.getRemoteAddr()
-        );
+        OAuthLoginResult result;
+        try {
+            result = authService.completeOAuthLogin(
+                    provider, code, state, stateCookie, error, userAgent(request), request.getRemoteAddr());
+        } catch (GeneralException loginFailure) {
+            URI redirectUri = authService.validatedFailureRedirectUri(provider, state);
+            URI destination = UriComponentsBuilder.fromUri(redirectUri)
+                    .queryParam("loginError", error != null && !error.isBlank() ? "cancelled" : "failed")
+                    .build(true).toUri();
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .location(destination)
+                    .header(HttpHeaders.SET_COOKIE, cookieService.clearOAuthState(provider).toString())
+                    .build();
+        }
         URI destination = UriComponentsBuilder.fromUri(result.redirectUri())
                 .queryParam("onboardingRequired", result.onboardingRequired())
                 .build(true)

@@ -44,6 +44,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/csrf").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/refresh", "/api/v1/auth/logout").permitAll()
                         .requestMatchers("/api/v1/auth/me", "/api/v1/auth/onboarding").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/users/me").authenticated()
                         .requestMatchers("/api/v1/**").hasRole("USER")
                         .anyRequest().denyAll())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

@@ -23,6 +23,10 @@ public interface MembershipJpaRepository extends JpaRepository<Membership, Long>
     List<Membership> findAllByUserId(@Param("userId") Long userId);
 
     @Override
+    @Query("SELECT m FROM Membership m JOIN FETCH m.organization WHERE m.userId = :userId")
+    List<Membership> findAllIncludingInactiveByUserId(@Param("userId") Long userId);
+
+    @Override
     @Query("SELECT m FROM Membership m WHERE m.organization.id = :organizationId")
     List<Membership> findAllByOrganizationId(@Param("organizationId") Long organizationId);
 

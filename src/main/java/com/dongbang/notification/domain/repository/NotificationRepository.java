@@ -48,6 +48,7 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     long countByOrganizationIdAndUserIdAndReadAtIsNull(Long organizationId, Long userId);
 
     List<Notification> findAllByDeduplicationKeyIn(Collection<String> deduplicationKeys);
+    void deleteAllByUserId(Long userId);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""

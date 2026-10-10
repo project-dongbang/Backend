@@ -47,7 +47,7 @@ public class EventParticipationService {
                 participants.countByEventId(eventId), event.getParticipantVersion());
     }
 
-    public void withdraw(Long organizationId, Long userId, Long eventId) {
+    public EventApplicationResult withdraw(Long organizationId, Long userId, Long eventId) {
         access.requireMember(organizationId, userId);
         Event event = locked(organizationId, eventId);
         requireOpen(event);
@@ -55,6 +55,8 @@ public class EventParticipationService {
         remove(event, membershipId);
         activityPort.synchronizeParticipants(eventId, List.of(), List.of(membershipId));
         audit(event, membershipId, "EVENT_WITHDRAW", membershipId.toString(), null);
+        return new EventApplicationResult(eventId, membershipId, false,
+                participants.countByEventId(eventId), event.getParticipantVersion());
     }
 
     public void closeRegistration(Long organizationId, Long userId, Long eventId) {

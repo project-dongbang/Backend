@@ -5,6 +5,8 @@ import com.dongbang.global.response.code.GeneralSuccessCode;
 import com.dongbang.global.security.CurrentUserId;
 import com.dongbang.mypage.application.MyPageService;
 import com.dongbang.mypage.application.MyPageActivityService;
+import com.dongbang.mypage.application.AccountWithdrawalService;
+import com.dongbang.auth.infrastructure.web.AuthCookieService;
 import com.dongbang.mypage.presentation.dto.request.UpdateMyProfileRequest;
 import com.dongbang.mypage.presentation.dto.response.MyProfileResponse;
 import com.dongbang.mypage.presentation.dto.response.MyActivitiesResponse;
@@ -18,6 +20,7 @@ import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -26,6 +29,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
 
 @Validated
@@ -36,6 +41,20 @@ public class MyPageController {
 
     private final MyPageService myPageService;
     private final MyPageActivityService myPageActivityService;
+    private final AccountWithdrawalService accountWithdrawalService;
+    private final AuthCookieService cookieService;
+
+    @DeleteMapping("/api/v1/users/me")
+    @Operation(summary = "서비스 회원 탈퇴", description = "회장은 대표 권한을 위임한 뒤 탈퇴할 수 있습니다. 탈퇴하면 모든 로그인 세션과 소셜 계정 연결이 해제됩니다.")
+    public ResponseEntity<ApiResponse<Void>> withdrawAccount(
+            @Parameter(hidden = true) @CurrentUserId Long userId
+    ) {
+        accountWithdrawalService.withdraw(userId);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookieService.clearAccessToken().toString())
+                .header(HttpHeaders.SET_COOKIE, cookieService.clearRefreshToken().toString())
+                .body(ApiResponse.onSuccess(GeneralSuccessCode.OK, null));
+    }
 
     @GetMapping("/api/v1/users/me")
     @Operation(summary = "내 프로필 조회", description = "내 기본 프로필과 OAuth 연결 정보, 선택 동아리의 회원 정보를 조회합니다.")

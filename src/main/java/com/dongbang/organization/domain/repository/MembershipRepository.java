@@ -11,6 +11,7 @@ public interface MembershipRepository {
     Optional<Membership> findById(Long id);
     Optional<Membership> findByOrganizationIdAndUserId(Long organizationId, Long userId);
     List<Membership> findAllByUserId(Long userId);
+    List<Membership> findAllIncludingInactiveByUserId(Long userId);
     List<Membership> findAllByOrganizationId(Long organizationId);
     List<Membership> findAllByOrganizationIdAndStatus(Long organizationId, MembershipStatus status);
     long countByOrganizationIdAndStatus(Long organizationId, MembershipStatus status);
