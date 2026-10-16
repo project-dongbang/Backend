@@ -85,7 +85,7 @@ docker compose --profile app ps
 docker compose --profile app up -d ocr
 ```
 
-IntelliJ로 API를 실행할 때 OCR 주소는 로컬 `.env`의 `RECEIPT_OCR_URL=http://localhost:8000`을 사용합니다. Docker Compose로 API까지 함께 실행할 때는 Compose가 컨테이너 내부 주소 `http://ocr:8000`을 자동 사용합니다. `GEMINI_API_KEY`는 선택값이며, 비워 두면 PaddleOCR 원문과 기본 분류만 저장합니다.
+IntelliJ로 API를 실행할 때 OCR 주소는 로컬 `.env`의 `RECEIPT_OCR_URL=http://localhost:8000`을 사용합니다. Docker Compose로 API까지 함께 실행할 때는 Compose가 컨테이너 내부 주소 `http://ocr:8000`을 자동 사용합니다. `GEMINI_API_KEY`는 선택값이며, 비워 두거나 AI 호출에 실패하면 PaddleOCR 원문과 기본 분류만 반환합니다. 확인할 수 없는 결제 수단은 `기타`로 돌려주므로 등록 전에 영수증과 대조해야 합니다. AI 모델은 `GEMINI_MODEL`로 선택하며 기본값은 `gemini-3-flash-preview`입니다. `/receipts/ocr`은 미리보기 분석만 하며 파일·DB 행을 저장하지 않습니다. 사용자가 사용 내역을 최종 등록하면 장부 API가 증빙 파일을 저장합니다.
 
 ### 5. 로컬 S3 테스트 (필요한 경우만)
 기본값은 `AWS_S3_ENABLED=false`이며 로컬 파일 저장소를 사용합니다. 실제 S3 업로드를 시험할 팀원만 개인 `.env`에 아래 값을 넣습니다. 실제 키는 공유 저장소나 PR에 올리지 않습니다.
@@ -164,7 +164,7 @@ chmod 600 .env
 
 `.env`의 데이터베이스, JWT, OAuth, S3 값과 선택적인 `GEMINI_API_KEY`를 실제 운영 값으로 변경해야 합니다. EC2에는 장기 AWS Access Key를 저장하지 않고 다음 권한을 가진 IAM Role을 연결합니다. `RECEIPT_OCR_URL`은 운영 Compose 내부 통신 주소인 `http://ocr:8000`을 유지합니다.
 
-운영 프론트는 Vercel의 `/api/*` 리라이트를 통해 API를 같은 출처에서 호출합니다. EC2의 `.env`에서 `AUTH_COOKIE_SECURE=true`와 `AUTH_ALLOWED_REDIRECT_URIS=https://dongbang-frontend.vercel.app,https://dongbang-frontend.vercel.app/auth/callback`을 설정합니다. Google/Kakao 개발자 콘솔과 EC2의 콜백 URI는 각각 `https://dongbang-frontend.vercel.app/api/v1/auth/oauth/google/callback`, `https://dongbang-frontend.vercel.app/api/v1/auth/oauth/kakao/callback`으로 일치시킵니다. GitHub Actions는 운영 `.env`를 덮어쓰지 않으므로 예시 파일 변경만으로는 반영되지 않습니다.
+운영 프론트는 Vercel의 `/api/*` 리라이트를 통해 API를 같은 출처에서 호출합니다. EC2의 `.env`에서 `AUTH_COOKIE_SECURE=true`와 `AUTH_ALLOWED_REDIRECT_URIS=https://mydongbang.vercel.app,https://mydongbang.vercel.app/auth/callback`을 설정합니다. Google/Kakao 개발자 콘솔과 EC2의 콜백 URI는 각각 `https://mydongbang.vercel.app/api/v1/auth/oauth/google/callback`, `https://mydongbang.vercel.app/api/v1/auth/oauth/kakao/callback`으로 일치시킵니다. Vercel 프로젝트의 새 도메인에서 `/api/*` 리라이트가 적용되는지 먼저 확인합니다. GitHub Actions는 운영 `.env`를 덮어쓰지 않으므로 예시 파일 변경만으로는 반영되지 않습니다. 운영 `.env`를 수정한 후 API 컨테이너를 재생성해야 하며 OCR의 `GEMINI_MODEL` 또는 `GEMINI_API_KEY`를 바꾸면 OCR 컨테이너도 재생성해야 합니다. 기존 도메인에서 로그인 버튼을 누르면 이전 `redirectUri`가 만들어지므로 테스트는 새 도메인의 `/login`에서 시작합니다.
 
 프론트는 로그인 후 `GET /api/v1/auth/csrf`를 `credentials: 'include'`로 호출하여 `result.token`과 `result.headerName`을 받습니다. 이후 POST/PUT/PATCH/DELETE 요청에는 쿠키를 포함하고 `X-XSRF-TOKEN: <result.token>`을 전송합니다. 운영 브라우저에서 로그인부터 변경 요청과 로그아웃까지 확인해야 합니다.
 

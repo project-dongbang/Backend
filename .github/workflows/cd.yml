@@ -59,6 +59,9 @@ jobs:
           chmod +x ./gradlew
           ./gradlew --no-daemon test integrationTest bootJar
 
+      - name: Test receipt AI fallback
+        run: python3 -m unittest discover -s receipt-ocr/tests
+
       - name: Validate production Compose configuration
         env:
           POSTGRES_PASSWORD: ci_only_password

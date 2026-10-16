@@ -37,7 +37,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         CrossSiteCsrfTest.ProductionAuthProperties.class})
 class CrossSiteCsrfTest {
 
-    private static final String FRONTEND = "https://dongbang-frontend.vercel.app";
+    private static final String FRONTEND = "https://mydongbang.vercel.app";
 
     @TestConfiguration
     static class ProductionAuthProperties {

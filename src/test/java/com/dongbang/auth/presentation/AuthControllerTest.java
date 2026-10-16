@@ -96,7 +96,7 @@ class AuthControllerTest {
     @Test
     @DisplayName("OAuth 취소 시 검증된 프론트 콜백으로 돌아가고 state 쿠키를 지운다")
     void cancelledOAuthReturnsToFrontend() throws Exception {
-        String callback = "https://dongbang-frontend.vercel.app/auth/callback";
+        String callback = "https://mydongbang.vercel.app/auth/callback";
         given(authService.completeOAuthLogin(eq(OAuthProvider.KAKAO), any(), eq("signed-state"),
                 eq("signed-state"), eq("access_denied"), any(), any()))
                 .willThrow(new GeneralException(AuthErrorCode.OAUTH_AUTHENTICATION_FAILED));
@@ -118,7 +118,7 @@ class AuthControllerTest {
     @Test
     @DisplayName("상태 쿠키가 빠져도 서명된 state가 있으면 오류 화면으로 돌아간다")
     void failedOAuthWithoutStateCookieReturnsToFrontend() throws Exception {
-        String callback = "https://dongbang-frontend.vercel.app/auth/callback";
+        String callback = "https://mydongbang.vercel.app/auth/callback";
         given(authService.completeOAuthLogin(eq(OAuthProvider.GOOGLE), isNull(), eq("signed-state"),
                 isNull(), eq("access_denied"), any(), any()))
                 .willThrow(new GeneralException(AuthErrorCode.INVALID_OAUTH_REQUEST));
