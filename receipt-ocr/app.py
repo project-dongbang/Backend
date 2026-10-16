@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 from io import BytesIO
@@ -7,25 +6,19 @@ import tempfile
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from PIL import Image
 from paddleocr import PaddleOCR
-import requests
+
+from gemini_client import DEFAULT_MODEL, generate_json, normalize_receipt_data
 
 logger = logging.getLogger("receipt-ocr")
 
 MAX_FILE_SIZE = 5 * 1024 * 1024
 ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp"}
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", DEFAULT_MODEL).strip()
 
 app = FastAPI(title="DongBang Receipt OCR")
 ocr = PaddleOCR(lang="korean", use_doc_orientation_classify=True,
                 use_doc_unwarping=True, use_textline_orientation=True)
-
-
-import time
-
-CANDIDATE_MODELS = [
-    "gemini-3.6-flash",
-    "gemini-3-flash-preview",
-]
 
 
 def correct_with_gemini(raw_text: str, api_key: str) -> dict:
@@ -38,6 +31,7 @@ def correct_with_gemini(raw_text: str, api_key: str) -> dict:
 [수행 작업]
 1. 영수증 텍스트를 분석하여 오타를 한국어 상식 및 상점 문맥에 맞게 자연스럽게 교정하고 가독성 좋게 정리하세요.
 2. 동아리/단체 회계 장부 등록을 위해 아래 JSON 규격에 맞춰 핵심 항목을 정확히 추출하세요.
+3. 영수증에 없는 정보나 카드의 소유자는 추측하지 마세요. 확인할 수 없는 필드는 null 또는 기타로 두세요.
 
 [JSON 필드 추출 및 분류 가이드]
 - "itemTitle": 영수증 대표 품목 요약명 (예: '아메리카노 외 3건', '치즈계란말이 외 25건', '사무용품 세트' 등 40자 이내)
@@ -52,7 +46,7 @@ def correct_with_gemini(raw_text: str, api_key: str) -> dict:
   * "홍보비" : 포스터 인쇄, 배너/현수막 제작, 홍보물 인쇄 등
   * "기타" : 위 분류에 속하지 않는 경우
 - "paymentMethod": 결제 수단. 반드시 다음 4개 중 하나만 선택:
-  * "동아리 카드" : 신용카드/체크카드 승인 표기(카드번호 마스킹, 승인번호 등)가 있는 경우
+  * "동아리 카드" : 동아리 명의 카드임을 확인할 수 있는 경우만 선택. 일반 카드 승인 표기만으로는 선택하지 말 것
   * "현금" : 현금영수증(소득공제/지출증빙) 표기가 있는 경우
   * "계좌이체" : 계좌이체/무통장입금 표기가 있는 경우
   * "기타" : 결제 수단 확인 불가 시
@@ -67,7 +61,7 @@ def correct_with_gemini(raw_text: str, api_key: str) -> dict:
   "amount": 10000,
   "merchant": "상호명",
   "category": "행사 운영",
-  "paymentMethod": "동아리 카드",
+  "paymentMethod": "기타",
   "memo": "품목 요약 메모",
   "items": [
     {{"name": "품목명", "quantity": 1, "price": 10000}}
@@ -78,43 +72,7 @@ def correct_with_gemini(raw_text: str, api_key: str) -> dict:
 영수증 1차 OCR 텍스트:
 {raw_text}
 """
-    payload = {
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {
-            "responseMimeType": "application/json",
-            "thinkingConfig": {
-                "thinkingBudget": 0
-            }
-        }
-    }
-
-    for model_name in CANDIDATE_MODELS:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
-        for attempt in range(2):
-            try:
-                res = requests.post(url, json=payload, timeout=25)
-                if res.status_code == 200:
-                    data = res.json()
-                    text_content = data["candidates"][0]["content"]["parts"][0]["text"]
-                    logger.info(f"Successfully processed receipt with {model_name}")
-                    return json.loads(text_content)
-                elif res.status_code in (503, 429):
-                    logger.warning(
-                        f"Gemini {model_name} attempt {attempt + 1} returned {res.status_code}, trying fallback..."
-                    )
-                    time.sleep(0.3)
-                    continue
-                else:
-                    logger.warning(f"Gemini API ({model_name}) returned status {res.status_code}: {res.text}")
-                    break
-            except requests.exceptions.Timeout:
-                logger.warning(f"Gemini API ({model_name}) timed out, trying next model...")
-                break
-            except Exception as e:
-                logger.warning(f"Failed to call Gemini API ({model_name}): {e}")
-                break
-
-    return None
+    return normalize_receipt_data(generate_json(prompt, api_key, GEMINI_MODEL))
 
 
 @app.get("/health")
@@ -160,7 +118,7 @@ async def recognize_receipt(file: UploadFile = File(...)):
             amount = gemini_data.get("amount")
             item_title = gemini_data.get("itemTitle")
             category = gemini_data.get("category") or "기타"
-            payment_method = gemini_data.get("paymentMethod") or "동아리 카드"
+            payment_method = gemini_data.get("paymentMethod") or "기타"
             memo = gemini_data.get("memo")
             items = gemini_data.get("items", [])
             corrected_text = gemini_data.get("correctedText") or raw_text
@@ -189,7 +147,7 @@ async def recognize_receipt(file: UploadFile = File(...)):
             "amount": None,
             "merchant": None,
             "category": "기타",
-            "paymentMethod": "동아리 카드",
+            "paymentMethod": "기타",
             "memo": None,
             "items": [],
             "storeName": None,

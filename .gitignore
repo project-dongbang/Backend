@@ -39,3 +39,5 @@ out/
 .gradle-user-home/
 .docker-local/
 *.log
+__pycache__/
+*.py[cod]

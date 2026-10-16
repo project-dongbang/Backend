@@ -63,7 +63,7 @@ class AuthApplicationServiceTest {
                 Duration.ofMinutes(5),
                 false,
                 List.of("http://localhost:5173/oauth/callback",
-                        "https://dongbang-frontend.vercel.app/auth/callback"),
+                        "https://mydongbang.vercel.app/auth/callback"),
                 null,
                 null
         );
@@ -82,7 +82,7 @@ class AuthApplicationServiceTest {
     @Test
     @DisplayName("허용된 프론트 콜백 주소만 OAuth 완료 후 리다이렉트 대상으로 사용한다")
     void createAuthorizationValidatesFrontendCallback() {
-        String callback = "https://dongbang-frontend.vercel.app/auth/callback";
+        String callback = "https://mydongbang.vercel.app/auth/callback";
         URI providerUri = URI.create("https://accounts.google.com/o/oauth2/v2/auth?state=signed-state");
         given(jwtTokenService.issueOAuthState(OAuthProvider.GOOGLE, callback))
                 .willReturn("signed-state");
@@ -94,12 +94,15 @@ class AuthApplicationServiceTest {
         assertThatThrownBy(() -> authService.createAuthorization(
                 OAuthProvider.GOOGLE, "https://untrusted.example/auth/callback"))
                 .isInstanceOf(GeneralException.class);
+        assertThatThrownBy(() -> authService.createAuthorization(
+                OAuthProvider.GOOGLE, "https://dongbang-dongbang.vercel.app/auth/callback"))
+                .isInstanceOf(GeneralException.class);
     }
 
     @Test
     @DisplayName("OAuth 실패 후 이동할 주소도 서명된 state와 허용 목록으로 검증한다")
     void validatedCallbackRedirectUriRejectsUntrustedState() {
-        String callback = "https://dongbang-frontend.vercel.app/auth/callback";
+        String callback = "https://mydongbang.vercel.app/auth/callback";
         given(jwtTokenService.parseOAuthState("signed-state"))
                 .willReturn(new OAuthStateClaims(OAuthProvider.KAKAO, callback));
 
